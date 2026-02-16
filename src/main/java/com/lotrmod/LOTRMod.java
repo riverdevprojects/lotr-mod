@@ -6,6 +6,7 @@ import com.lotrmod.item.ModItems;
 import com.lotrmod.worldgen.LOTRWorldGen;
 import com.lotrmod.worldgen.LandmaskLoader;
 import com.lotrmod.worldgen.RegionMapLoader;
+import com.lotrmod.worldgen.feature.ModFeatures;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.neoforged.bus.api.IEventBus;
@@ -33,6 +34,7 @@ public class LOTRMod {
 
         // Register world generation components
         LOTRWorldGen.register(modEventBus);
+        ModFeatures.register(modEventBus);
 
         NeoForge.EVENT_BUS.register(this);
 

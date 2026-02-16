@@ -36,5 +36,14 @@
   },
   "spawn_costs": {},
   "carvers": {},
-  "features": []
+  "features": [
+    [], [], [], [], [], [], [], [], [],
+    [
+      "lotrmod:birch_tree_tiny_placed",
+      "lotrmod:birch_tree_small_placed",
+      "lotrmod:birch_tree_medium_placed",
+      "lotrmod:lotr_grass_patch_placed",
+      "lotrmod:lotr_flower_patch_placed"
+    ]
+  ]
 }
