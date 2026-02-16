@@ -78,11 +78,11 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
     private static final double MEDIUM_SCALE_WAVELENGTH = 300.0;
     private static final double MEDIUM_SCALE_AMPLITUDE = 15.0;
 
-    private static final double SMALL_SCALE_WAVELENGTH = 40.0;
-    private static final double SMALL_SCALE_AMPLITUDE = 8.0;
+    private static final double SMALL_SCALE_WAVELENGTH = 60.0;
+    private static final double SMALL_SCALE_AMPLITUDE = 4.0;
 
-    private static final double DETAIL_SCALE_WAVELENGTH = 10.0;
-    private static final double DETAIL_SCALE_AMPLITUDE = 3.0;
+    private static final double DETAIL_SCALE_WAVELENGTH = 20.0;
+    private static final double DETAIL_SCALE_AMPLITUDE = 1.5;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource);
@@ -468,8 +468,8 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
         double baseHeight = SEA_LEVEL +
                            (largeNoise * modifiers.terrainVariationScale) +
                            (mediumNoise * modifiers.terrainVariationScale) +
-                           (smallNoise * modifiers.terrainVariationScale * 0.8) +
-                           (detailNoise * modifiers.terrainVariationScale * 0.6);
+                           (smallNoise * modifiers.terrainVariationScale * 0.5) +
+                           (detailNoise * modifiers.terrainVariationScale * 0.3);
 
         // Add mountain variation (if this biome has mountains)
         double mountainVariation = mountainNoiseRaw * modifiers.mountainBaseHeight;
@@ -486,20 +486,34 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
 
     /**
      * Generate raw mountain noise (returns 0-1, NOT scaled by amplitude yet)
+     * Uses ridged noise for jagged, sharp peaks and an additional high-frequency
+     * octave for fine-grained ruggedness.
      */
     private double generateMountainVariationNoiseRaw(int worldX, int worldZ) {
-        double mountainScale1 = 1.0 / 400.0;
-        double mountainScale2 = 1.0 / 150.0;
-        double mountainScale3 = 1.0 / 50.0;
+        double mountainScale1 = 1.0 / 400.0;  // Large envelope
+        double mountainScale2 = 1.0 / 150.0;  // Medium ridges
+        double mountainScale3 = 1.0 / 50.0;   // Small ridges
+        double mountainScale4 = 1.0 / 20.0;   // Fine jaggedness
 
         double noise1 = this.terrainNoise.getValue(worldX * mountainScale1, worldZ * mountainScale1, false);
         double noise2 = this.terrainNoise.getValue(worldX * mountainScale2, worldZ * mountainScale2, false);
         double noise3 = this.detailNoise.getValue(worldX * mountainScale3, worldZ * mountainScale3, false);
+        double noise4 = this.detailNoise.getValue(worldX * mountainScale4, worldZ * mountainScale4, false);
 
-        double combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
-        double normalizedNoise = (combinedNoise + 1.0) / 2.0;
+        // Large-scale envelope controls where mountains exist (smooth 0-1)
+        double envelope = (noise1 + 1.0) / 2.0;
 
-        return normalizedNoise * normalizedNoise;  // Square for dramatic peaks
+        // Ridged noise: sharp peaks where noise crosses zero
+        double ridge2 = 1.0 - Math.abs(noise2);
+        double ridge3 = 1.0 - Math.abs(noise3);
+
+        // Combine ridged octaves with fine jaggedness for sharp, erratic peaks
+        double jagged = ridge2 * 0.4 + ridge3 * 0.35 + Math.abs(noise4) * 0.25;
+
+        // Envelope shapes overall mountain placement; jagged shapes the peaks
+        double combined = envelope * jagged;
+
+        return combined * combined;  // Square for dramatic peaks
     }
 
     /**
@@ -510,7 +524,7 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
         double hillNoise = this.terrainNoise.getValue(worldX * hillScale, worldZ * hillScale, false);
 
         double normalized = (hillNoise + 1.0) / 2.0;
-        return Math.sin(normalized * Math.PI) * 25.0;  // Smooth rolling hills
+        return Math.sin(normalized * Math.PI) * 10.0;  // Low-lying rolling hills
     }
 
     private double getLandmaskHeightBias(int worldX, int worldZ) {
@@ -589,10 +603,10 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
             result.mountainFactor = 1.0;
 
             double mountainScale = switch (biome) {
-                case BLUE_MOUNTAINS, MISTY_MOUNTAINS, MOUNTAINS_OF_SHADOW -> 100.0;
-                case WHITE_MOUNTAINS, GREY_MOUNTAINS -> 80.0;
-                case IRON_HILLS, EREBOR, FORODWAITH_ICY_MOUNTAINS -> 60.0;
-                default -> 40.0;
+                case BLUE_MOUNTAINS, MISTY_MOUNTAINS, MOUNTAINS_OF_SHADOW -> 200.0;
+                case WHITE_MOUNTAINS, GREY_MOUNTAINS -> 160.0;
+                case IRON_HILLS, EREBOR, FORODWAITH_ICY_MOUNTAINS -> 120.0;
+                default -> 80.0;
             };
 
             result.mountainBaseHeight = mountainScale;
