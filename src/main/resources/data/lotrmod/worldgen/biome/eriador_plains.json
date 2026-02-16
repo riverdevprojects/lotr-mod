@@ -36,5 +36,11 @@
   },
   "spawn_costs": {},
   "carvers": {},
-  "features": []
+  "features": [
+    [], [], [], [], [], [], [], [], [],
+    [
+      "lotrmod:lotr_grass_patch_dense_placed",
+      "lotrmod:lotr_flower_patch_dense_placed"
+    ]
+  ]
 }
