@@ -79,10 +79,10 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
     private static final double MEDIUM_SCALE_AMPLITUDE = 15.0;
 
     private static final double SMALL_SCALE_WAVELENGTH = 60.0;
-    private static final double SMALL_SCALE_AMPLITUDE = 4.0;
+    private static final double SMALL_SCALE_AMPLITUDE = 8.0;
 
     private static final double DETAIL_SCALE_WAVELENGTH = 20.0;
-    private static final double DETAIL_SCALE_AMPLITUDE = 1.5;
+    private static final double DETAIL_SCALE_AMPLITUDE = 3.0;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource);
@@ -112,7 +112,7 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
 
     @Override
     public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
-        // Disabled - using custom terrain generation
+        super.applyCarvers(level, seed, random, biomeManager, structureManager, chunk, step);
     }
 
     @Override
@@ -332,7 +332,7 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
         // =====================================
         // STEP 2: Get grid cell for biome blending
         // =====================================
-        final int GRID_SIZE = 32;
+        final int GRID_SIZE = 128;
         int x0 = Math.floorDiv(worldX, GRID_SIZE) * GRID_SIZE;
         int z0 = Math.floorDiv(worldZ, GRID_SIZE) * GRID_SIZE;
         int x1 = x0 + GRID_SIZE;
@@ -618,10 +618,11 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
             result.terrainVariationScale = 1.0;
         } else if (isFlatBiome(biome)) {
             result.flatFactor = 1.0;
+            result.hillFactor = 0.6;
             result.baseHeightOffset = 0.0;
-            result.terrainVariationScale = 0.3;
+            result.terrainVariationScale = 0.5;
         } else {
-            result.hillFactor = 0.5;
+            result.hillFactor = 0.8;
             result.flatFactor = 0.5;
             result.terrainVariationScale = 0.7;
         }
