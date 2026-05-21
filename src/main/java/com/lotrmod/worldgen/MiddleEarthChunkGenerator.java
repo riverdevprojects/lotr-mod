@@ -25,9 +25,13 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.carver.CarvingContext;
+import net.minecraft.world.level.levelgen.carver.CarvingMask;
+import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise;
 
 import java.util.List;
@@ -111,8 +115,49 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
     }
 
     @Override
-    public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
-        super.applyCarvers(level, seed, random, biomeManager, structureManager, chunk, step);
+    public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
+        if (!(chunk instanceof ProtoChunk protoChunk)) return;
+
+        WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
+        ChunkPos chunkPos = chunk.getPos();
+
+        CarvingContext carvingContext = new CarvingContext(
+            this, level.registryAccess(),
+            chunk.getHeightAccessorForGeneration(),
+            randomState,
+            this.settings.value().surfaceRule()
+        );
+
+        // Simple aquifer: below sea level → water, above → air
+        AquiferSampler aquifer = new AquiferSampler() {
+            @Override
+            public BlockState computeSubstance(DensityFunction.FunctionContext ctx, double substance) {
+                return ctx.blockY() <= SEA_LEVEL ? Blocks.WATER.defaultBlockState() : null;
+            }
+            @Override
+            public boolean shouldScheduleFluidUpdate() { return false; }
+        };
+
+        CarvingMask carvingMask = protoChunk.getOrCreateCarvingMask(step);
+
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                ChunkPos nearbyPos = new ChunkPos(chunkPos.x + dx, chunkPos.z + dz);
+                Holder<Biome> biome = biomeManager.getBiome(
+                    new BlockPos(nearbyPos.getMinBlockX(), 0, nearbyPos.getMinBlockZ())
+                );
+                List<Holder<ConfiguredWorldCarver<?>>> carvers =
+                    biome.value().getGenerationSettings().getCarvers(step);
+
+                int i = 0;
+                for (Holder<ConfiguredWorldCarver<?>> carverHolder : carvers) {
+                    random.setLargeFeatureSeed(seed + (long) i++, nearbyPos.x, nearbyPos.z);
+                    if (carverHolder.value().isStartChunk(random)) {
+                        carverHolder.value().carve(carvingContext, chunk, biomeManager::getBiome, random, aquifer, nearbyPos, carvingMask);
+                    }
+                }
+            }
+        }
     }
 
     @Override
