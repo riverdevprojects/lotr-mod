@@ -35,9 +35,23 @@
     ]
   },
   "spawn_costs": {},
-  "carvers": {},
+  "carvers": {
+    "air": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ]
+  },
   "features": [
-    [], [], [], [], [], [], [], [], [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
     [
       "lotrmod:birch_tree_tiny_sparse_placed",
       "lotrmod:lotr_grass_patch_sparse_placed",
