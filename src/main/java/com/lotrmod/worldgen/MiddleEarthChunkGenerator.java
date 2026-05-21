@@ -25,13 +25,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.blending.Blender;
-import net.minecraft.world.level.levelgen.carver.CarvingContext;
-import net.minecraft.world.level.levelgen.carver.CarvingMask;
-import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise;
 
 import java.util.List;
@@ -43,15 +39,14 @@ import java.util.concurrent.CompletableFuture;
  * FIXED VERSION - Eliminates vertical cliffs by blending actual terrain heights
  * instead of just biome modifiers
  */
-public class MiddleEarthChunkGenerator extends ChunkGenerator {
+public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     public static final MapCodec<MiddleEarthChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(
             instance -> instance.group(
                     BiomeSource.CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
-                    NoiseGeneratorSettings.CODEC.fieldOf("settings").forGetter(gen -> gen.settings)
+                    NoiseGeneratorSettings.CODEC.fieldOf("settings").forGetter(gen -> gen.generatorSettings())
             ).apply(instance, MiddleEarthChunkGenerator::new)
     );
 
-    private final Holder<NoiseGeneratorSettings> settings;
     private final PerlinSimplexNoise coastlineNoise;
     private final PerlinSimplexNoise terrainNoise;
     private final PerlinSimplexNoise detailNoise;
@@ -89,8 +84,7 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
     private static final double DETAIL_SCALE_AMPLITUDE = 3.0;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
-        super(biomeSource);
-        this.settings = settings;
+        super(biomeSource, settings);
 
         RandomSource random = RandomSource.create(12345);
         this.coastlineNoise = new PerlinSimplexNoise(random, List.of(0, 1, 2, 3));
@@ -112,52 +106,6 @@ public class MiddleEarthChunkGenerator extends ChunkGenerator {
     public void createStructures(net.minecraft.core.RegistryAccess registryAccess, ChunkGeneratorStructureState chunkGeneratorStructureState, StructureManager structureManager, ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager structureTemplateManager) {
         // COMPLETELY DISABLE ALL VANILLA STRUCTURE GENERATION
         // Do not call super.createStructures() - this prevents ALL structures from being placed
-    }
-
-    @Override
-    public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
-        if (!(chunk instanceof ProtoChunk protoChunk)) return;
-
-        WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
-        ChunkPos chunkPos = chunk.getPos();
-
-        CarvingContext carvingContext = new CarvingContext(
-            this, level.registryAccess(),
-            chunk.getHeightAccessorForGeneration(),
-            randomState,
-            this.settings.value().surfaceRule()
-        );
-
-        // Simple aquifer: below sea level → water, above → air
-        AquiferSampler aquifer = new AquiferSampler() {
-            @Override
-            public BlockState computeSubstance(DensityFunction.FunctionContext ctx, double substance) {
-                return ctx.blockY() <= SEA_LEVEL ? Blocks.WATER.defaultBlockState() : null;
-            }
-            @Override
-            public boolean shouldScheduleFluidUpdate() { return false; }
-        };
-
-        CarvingMask carvingMask = protoChunk.getOrCreateCarvingMask(step);
-
-        for (int dx = -8; dx <= 8; dx++) {
-            for (int dz = -8; dz <= 8; dz++) {
-                ChunkPos nearbyPos = new ChunkPos(chunkPos.x + dx, chunkPos.z + dz);
-                Holder<Biome> biome = biomeManager.getBiome(
-                    new BlockPos(nearbyPos.getMinBlockX(), 0, nearbyPos.getMinBlockZ())
-                );
-                List<Holder<ConfiguredWorldCarver<?>>> carvers =
-                    biome.value().getGenerationSettings().getCarvers(step);
-
-                int i = 0;
-                for (Holder<ConfiguredWorldCarver<?>> carverHolder : carvers) {
-                    random.setLargeFeatureSeed(seed + (long) i++, nearbyPos.x, nearbyPos.z);
-                    if (carverHolder.value().isStartChunk(random)) {
-                        carverHolder.value().carve(carvingContext, chunk, biomeManager::getBiome, random, aquifer, nearbyPos, carvingMask);
-                    }
-                }
-            }
-        }
     }
 
     @Override
