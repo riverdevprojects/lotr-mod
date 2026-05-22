@@ -212,6 +212,15 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     }
 
     @Override
+    public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
+        // Cave generation is handled directly in fillFromNoise via isNoiseCaveAt().
+        // The inherited NoiseBasedChunkGenerator creates an aquifer from its noise
+        // router density functions — with all-zero values, that aquifer treats every
+        // sub-sea-level void as water-saturated, flooding every cave regardless of
+        // the aquifers_enabled flag in the noise settings.
+    }
+
+    @Override
     public int getGenDepth() {
         return 384;
     }
@@ -247,6 +256,8 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         } else {
                             chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
                         }
+                    } else if (isNoiseCaveAt(worldX, y, worldZ, height)) {
+                        chunk.setBlockState(pos, Blocks.CAVE_AIR.defaultBlockState(), false);
                     } else if (y < 0) {
                         chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
                     } else {
@@ -272,6 +283,68 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Returns true if the block at (worldX, y, worldZ) should be a cave void.
+     *
+     * Uses two independent cave systems:
+     *   - Cheese caves: two orthogonal 3-D noise fields; both near zero = open chamber.
+     *     Threshold grows with depth so chambers are tiny near the surface and enormous
+     *     at bedrock level, producing the classic vanilla "huge deepslate cavern" look.
+     *   - Spaghetti tunnels: a second pair of noise fields with a narrow threshold forms
+     *     thin winding passages that connect the cheese chambers and occasionally surface.
+     *
+     * No aquifer is involved, so all voids are guaranteed dry.
+     */
+    private boolean isNoiseCaveAt(int worldX, int y, int worldZ, int terrainHeight) {
+        final int BEDROCK_SAFE_Y = -54;
+        if (y <= BEDROCK_SAFE_Y) return false;
+        if (y >= terrainHeight) return false;
+
+        // relDepth: 0 just below the surface, 1 at bedrock
+        double relDepth = (double)(terrainHeight - y) / Math.max(1.0, terrainHeight - BEDROCK_SAFE_Y);
+        // Skip the topmost 2 % of terrain depth to avoid caves floating at the surface
+        if (relDepth < 0.02) return false;
+
+        // ── CHEESE CAVES ─────────────────────────────────────────────────────────
+        // Two independent noise fields; both near zero = open chamber.
+        // A depth offset causes the cave cross-section to slowly rotate as y changes,
+        // giving natural arched ceilings and floors.
+        double cScale = 1.0 / 90.0;
+        double dShift = y * 0.009;
+        double c1 = terrainNoise.getValue(worldX * cScale, worldZ * cScale + dShift, false);
+        double c2 = detailNoise.getValue(
+            (worldX + 9371) * cScale * 0.9,
+            (worldZ + 9371) * cScale * 0.9 - dShift * 1.1,
+            false
+        );
+        // Threshold: 0.05 near surface → 0.35 at bedrock (caves grow dramatically with depth)
+        double cheeseThresh = 0.05 + relDepth * 0.30;
+        if (Math.abs(c1) < cheeseThresh && Math.abs(c2) < cheeseThresh) return true;
+
+        // ── SPAGHETTI TUNNELS ────────────────────────────────────────────────────
+        // Narrow winding passages. Not generated in the very top of the terrain so
+        // tunnels appear to emerge from cheese chambers rather than the sky.
+        if (relDepth > 0.05) {
+            double sScale = 1.0 / 35.0;
+            double sShift = y * 0.020;
+            double s1 = largeScaleCoastNoise.getValue(
+                worldX * sScale + sShift,
+                worldZ * sScale - sShift * 0.8,
+                false
+            );
+            double s2 = mediumScaleCoastNoise.getValue(
+                (worldX + 4000) * sScale,
+                (worldZ + 4000) * sScale + sShift * 1.3,
+                false
+            );
+            // Slightly wider deeper so tunnels open into chambers naturally
+            double spagThresh = 0.07 + relDepth * 0.05;
+            if (Math.abs(s1) < spagThresh && Math.abs(s2) < spagThresh) return true;
+        }
+
+        return false;
     }
 
     /**
