@@ -75,13 +75,13 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private static final double LARGE_SCALE_AMPLITUDE = 25.0;
 
     private static final double MEDIUM_SCALE_WAVELENGTH = 300.0;
-    private static final double MEDIUM_SCALE_AMPLITUDE = 15.0;
+    private static final double MEDIUM_SCALE_AMPLITUDE = 25.0;
 
     private static final double SMALL_SCALE_WAVELENGTH = 60.0;
-    private static final double SMALL_SCALE_AMPLITUDE = 8.0;
+    private static final double SMALL_SCALE_AMPLITUDE = 20.0;
 
     private static final double DETAIL_SCALE_WAVELENGTH = 20.0;
-    private static final double DETAIL_SCALE_AMPLITUDE = 3.0;
+    private static final double DETAIL_SCALE_AMPLITUDE = 6.0;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource, settings);
@@ -122,7 +122,12 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 int worldZ = startZ + z;
                 int terrainHeight = getTerrainHeight(worldX, worldZ);
 
-                LOTRBiome biome = getBiomeAt(worldX, worldZ);
+                // Jitter the biome lookup position so region-boundary block-type changes
+                // appear as an irregular natural edge rather than a straight 16x16 grid line.
+                double jitterScale = 1.0 / 40.0;
+                int jx = (int)(this.detailNoise.getValue(worldX * jitterScale, worldZ * jitterScale, false) * 16.0);
+                int jz = (int)(this.detailNoise.getValue((worldX + 7919) * jitterScale, worldZ * jitterScale, false) * 16.0);
+                LOTRBiome biome = getBiomeAt(worldX + jx, worldZ + jz);
 
                 for (int y = chunk.getMaxBuildHeight() - 1; y >= chunk.getMinBuildHeight(); y--) {
                     pos.set(startX + x, y, startZ + z);
@@ -240,20 +245,29 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         if (y == chunk.getMinBuildHeight() || (y <= chunk.getMinBuildHeight() + 4 && Math.random() < 0.8)) {
                             chunk.setBlockState(pos, Blocks.BEDROCK.defaultBlockState(), false);
                         } else {
-                            chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
+                            chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
                         }
+                    } else if (y < 0) {
+                        chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
                     } else {
                         chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
                     }
                 }
 
+                // Only fill water where the landmask says it's ocean/coastal.
+                // Inland terrain that dips below sea level stays dry — filling it with
+                // water would flood any cave that the carver punches through nearby stone.
                 if (height < SEA_LEVEL) {
-                    LOTRBiome biome = getBiomeAt(worldX, worldZ);
-                    BlockState liquidState = getLiquidForBiome(biome);
-
-                    for (int y = height + 1; y <= SEA_LEVEL; y++) {
-                        pos.set(startX + x, y, startZ + z);
-                        chunk.setBlockState(pos, liquidState, false);
+                    double brightness = LandmaskLoader.isLoaded()
+                        ? LandmaskLoader.getInterpolatedBrightness(worldX, worldZ)
+                        : 255.0;
+                    if (brightness > 140.0) {
+                        LOTRBiome biome = getBiomeAt(worldX, worldZ);
+                        BlockState liquidState = getLiquidForBiome(biome);
+                        for (int y = height + 1; y <= SEA_LEVEL; y++) {
+                            pos.set(startX + x, y, startZ + z);
+                            chunk.setBlockState(pos, liquidState, false);
+                        }
                     }
                 }
             }
@@ -515,9 +529,8 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private double generateHillVariationNoiseRaw(int worldX, int worldZ) {
         double hillScale = 1.0 / 250.0;
         double hillNoise = this.terrainNoise.getValue(worldX * hillScale, worldZ * hillScale, false);
-
-        double normalized = (hillNoise + 1.0) / 2.0;
-        return Math.sin(normalized * Math.PI) * 10.0;  // Low-lying rolling hills
+        // Raw noise gives genuine ±variation so terrain rolls up AND down (not just up)
+        return hillNoise * 15.0;
     }
 
     private double getLandmaskHeightBias(int worldX, int worldZ) {
@@ -611,13 +624,13 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             result.terrainVariationScale = 1.0;
         } else if (isFlatBiome(biome)) {
             result.flatFactor = 1.0;
-            result.hillFactor = 0.6;
-            result.baseHeightOffset = 0.0;
-            result.terrainVariationScale = 0.5;
-        } else {
-            result.hillFactor = 0.8;
-            result.flatFactor = 0.5;
+            result.hillFactor = 0.9;
+            result.baseHeightOffset = 8.0;  // Keep flat biomes above sea level
             result.terrainVariationScale = 0.7;
+        } else {
+            result.hillFactor = 0.9;
+            result.flatFactor = 0.5;
+            result.terrainVariationScale = 0.8;
         }
 
         return result;
@@ -657,7 +670,7 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         for (int i = 0; i < states.length; i++) {
             int y = level.getMinBuildHeight() + i;
             if (y <= height) {
-                states[i] = Blocks.STONE.defaultBlockState();
+                states[i] = y < 0 ? Blocks.DEEPSLATE.defaultBlockState() : Blocks.STONE.defaultBlockState();
             } else if (y <= SEA_LEVEL) {
                 states[i] = Blocks.WATER.defaultBlockState();
             } else {
