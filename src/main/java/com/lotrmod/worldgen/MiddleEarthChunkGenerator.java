@@ -1,26 +1,18 @@
 package com.lotrmod.worldgen;
 
-import com.lotrmod.LOTRMod;
-import com.lotrmod.block.ModBlocks;
 import com.lotrmod.worldgen.biome.LOTRBiome;
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderGetter;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.WorldGenRegion;
-import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
-import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -33,12 +25,6 @@ import net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Custom chunk generator that creates terrain based on the Middle-earth landmask
- * 
- * FIXED VERSION - Eliminates vertical cliffs by blending actual terrain heights
- * instead of just biome modifiers
- */
 public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     public static final MapCodec<MiddleEarthChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(
             instance -> instance.group(
@@ -47,54 +33,36 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             ).apply(instance, MiddleEarthChunkGenerator::new)
     );
 
+    // Primary terrain noise layers (multi-octave for natural look)
+    private final PerlinSimplexNoise continentalNoise;   // Very large scale shape
+    private final PerlinSimplexNoise erosionNoise;       // Erosion / valley carving
+    private final PerlinSimplexNoise peaksValleysNoise;  // Local peaks and valleys
+    private final PerlinSimplexNoise detailNoise;        // Surface fine detail
+    private final PerlinSimplexNoise ridgeNoise;         // Mountain ridgelines
+
+    // Used for cave generation and biome jitter
+    private final PerlinSimplexNoise caveNoise1;
+    private final PerlinSimplexNoise caveNoise2;
     private final PerlinSimplexNoise coastlineNoise;
-    private final PerlinSimplexNoise terrainNoise;
-    private final PerlinSimplexNoise detailNoise;
 
-    // Additional noise generators for multi-scale coastline generation
-    private final PerlinSimplexNoise largeScaleCoastNoise;   // Major coastal shapes
-    private final PerlinSimplexNoise mediumScaleCoastNoise;  // Bays and peninsulas
-    private final PerlinSimplexNoise smallScaleCoastNoise;   // Detailed coastline jaggedness
-
-    // Sea level for the world
     private static final int SEA_LEVEL = 63;
-
-    // ========================================
-    // TERRAIN GENERATION TUNING PARAMETERS
-    // ========================================
-
-    private static final double LANDMASK_INFLUENCE_STRENGTH = 0.6;
-    private static final double LANDMASK_HEIGHT_BIAS = 15.0;
-    private static final double OCEAN_BRIGHTNESS_THRESHOLD = 220.0;
-
-    // ========================================
-    // MULTI-SCALE NOISE PARAMETERS
-    // ========================================
-
-    private static final double LARGE_SCALE_WAVELENGTH = 1200.0;
-    private static final double LARGE_SCALE_AMPLITUDE = 25.0;
-
-    private static final double MEDIUM_SCALE_WAVELENGTH = 300.0;
-    private static final double MEDIUM_SCALE_AMPLITUDE = 25.0;
-
-    private static final double SMALL_SCALE_WAVELENGTH = 60.0;
-    private static final double SMALL_SCALE_AMPLITUDE = 20.0;
-
-    private static final double DETAIL_SCALE_WAVELENGTH = 20.0;
-    private static final double DETAIL_SCALE_AMPLITUDE = 6.0;
+    // Terrain is always kept above this — no water, no sub-surface voids
+    private static final int MIN_TERRAIN_HEIGHT = 65;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource, settings);
 
-        RandomSource random = RandomSource.create(12345);
-        this.coastlineNoise = new PerlinSimplexNoise(random, List.of(0, 1, 2, 3));
-        this.terrainNoise = new PerlinSimplexNoise(random, List.of(0, 1, 2));
-        this.detailNoise = new PerlinSimplexNoise(random, List.of(0, 1));
+        RandomSource r1 = RandomSource.create(12345L);
+        this.continentalNoise  = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3, 4));
+        this.erosionNoise      = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
+        this.peaksValleysNoise = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
+        this.detailNoise       = new PerlinSimplexNoise(r1, List.of(0, 1, 2));
+        this.ridgeNoise        = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
 
-        RandomSource coastRandom = RandomSource.create(54321);
-        this.largeScaleCoastNoise = new PerlinSimplexNoise(coastRandom, List.of(0, 1, 2, 3, 4));
-        this.mediumScaleCoastNoise = new PerlinSimplexNoise(coastRandom, List.of(0, 1, 2, 3));
-        this.smallScaleCoastNoise = new PerlinSimplexNoise(coastRandom, List.of(0, 1, 2));
+        RandomSource r2 = RandomSource.create(98765L);
+        this.caveNoise1    = new PerlinSimplexNoise(r2, List.of(0, 1, 2, 3));
+        this.caveNoise2    = new PerlinSimplexNoise(r2, List.of(0, 1, 2, 3));
+        this.coastlineNoise = new PerlinSimplexNoise(r2, List.of(0, 1, 2));
     }
 
     @Override
@@ -103,9 +71,10 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     }
 
     @Override
-    public void createStructures(net.minecraft.core.RegistryAccess registryAccess, ChunkGeneratorStructureState chunkGeneratorStructureState, StructureManager structureManager, ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager structureTemplateManager) {
-        // COMPLETELY DISABLE ALL VANILLA STRUCTURE GENERATION
-        // Do not call super.createStructures() - this prevents ALL structures from being placed
+    public void createStructures(net.minecraft.core.RegistryAccess registryAccess, ChunkGeneratorStructureState state,
+            StructureManager structureManager, ChunkAccess chunk,
+            net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templateManager) {
+        // All structure placement handled by LOTR mod separately
     }
 
     @Override
@@ -122,11 +91,10 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 int worldZ = startZ + z;
                 int terrainHeight = getTerrainHeight(worldX, worldZ);
 
-                // Jitter the biome lookup position so region-boundary block-type changes
-                // appear as an irregular natural edge rather than a straight 16x16 grid line.
-                double jitterScale = 1.0 / 40.0;
-                int jx = (int)(this.detailNoise.getValue(worldX * jitterScale, worldZ * jitterScale, false) * 16.0);
-                int jz = (int)(this.detailNoise.getValue((worldX + 7919) * jitterScale, worldZ * jitterScale, false) * 16.0);
+                // Slight position jitter so biome surface boundaries look organic
+                double jScale = 1.0 / 40.0;
+                int jx = (int)(detailNoise.getValue(worldX * jScale, worldZ * jScale, false) * 14.0);
+                int jz = (int)(detailNoise.getValue((worldX + 7919) * jScale, worldZ * jScale, false) * 14.0);
                 LOTRBiome biome = getBiomeAt(worldX + jx, worldZ + jz);
 
                 for (int y = chunk.getMaxBuildHeight() - 1; y >= chunk.getMinBuildHeight(); y--) {
@@ -134,7 +102,11 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                     BlockState state = chunk.getBlockState(pos);
 
                     if (state.is(Blocks.STONE)) {
-                        BlockState surfaceBlock = getSurfaceBlockForBiome(biome, terrainHeight);
+                        // Snow cap on high peaks
+                        boolean isHighPeak = terrainHeight >= 160;
+                        BlockState surfaceBlock = isHighPeak
+                                ? Blocks.SNOW_BLOCK.defaultBlockState()
+                                : getSurfaceBlockForBiome(biome, terrainHeight, y);
                         BlockState underBlock = getUnderBlockForBiome(biome, terrainHeight);
 
                         chunk.setBlockState(pos, surfaceBlock, false);
@@ -144,7 +116,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         chunk.setBlockState(pos, underBlock, false);
                         pos.setY(y - 3);
                         chunk.setBlockState(pos, underBlock, false);
-
                         break;
                     }
                 }
@@ -152,83 +123,79 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         }
     }
 
-    private BlockState getSurfaceBlockForBiome(LOTRBiome biome, int terrainHeight) {
-        if (biome == null) {
-            return terrainHeight >= 68 ? Blocks.GRASS_BLOCK.defaultBlockState() :
-                   terrainHeight >= 60 ? Blocks.SAND.defaultBlockState() :
-                   Blocks.GRAVEL.defaultBlockState();
-        }
+    private BlockState getSurfaceBlockForBiome(LOTRBiome biome, int terrainHeight, int surfaceY) {
+        if (biome == null) return Blocks.GRASS_BLOCK.defaultBlockState();
+
+        // Stone-capped mountains (above tree line)
+        if (terrainHeight >= 120 && biome.isMountain()) return Blocks.STONE.defaultBlockState();
 
         return switch (biome) {
+            // Deserts
             case HARAD_DESERT -> Blocks.SAND.defaultBlockState();
-            case ROHAN_GRASSLAND, RHUN_GRASSLAND, EASTERN_RHOVANIAN_GRASSLAND,
-                 HARAD_SAVANNA, LINDON_MEADOW -> Blocks.GRASS_BLOCK.defaultBlockState();
+
+            // Marshes / wet ground (MUD is vanilla)
             case ARNOR_MARSH, VALE_OF_ANDUIN_FLOODPLAINS -> Blocks.MUD.defaultBlockState();
-            case ANDUIN_RIVER, CELDUIN_RIVER -> ModBlocks.SILT.get().defaultBlockState();
+
+            // Dry riverbeds — gravel, no water
+            case ANDUIN_RIVER, CELDUIN_RIVER -> Blocks.GRAVEL.defaultBlockState();
+
+            // Bare stone mountains
             case BLUE_MOUNTAINS, MISTY_MOUNTAINS, GREY_MOUNTAINS,
-                 WHITE_MOUNTAINS, EREBOR, FORODWAITH_ICY_MOUNTAINS -> Blocks.STONE.defaultBlockState();
-            case MOUNTAINS_OF_SHADOW -> ModBlocks.STONE_TYPES.get("volcanic_stone").stone.get().defaultBlockState();
-            case IRON_HILLS -> Blocks.GRAVEL.defaultBlockState();
-            case MORDOR_VOLCANIC_WASTE -> ModBlocks.VOLCANIC_ASH_BLOCK.get().defaultBlockState();
+                 WHITE_MOUNTAINS, EREBOR, FORODWAITH_ICY_MOUNTAINS,
+                 MOUNTAINS_OF_SHADOW, IRON_HILLS -> Blocks.STONE.defaultBlockState();
+
+            // Mordor — coarse gravel/dirt, no custom blocks
+            case MORDOR_VOLCANIC_WASTE -> Blocks.GRAVEL.defaultBlockState();
+
+            // Dead, barren ground
+            case DEAD_LANDS_EMPTY -> Blocks.COARSE_DIRT.defaultBlockState();
+            case RHUN_SHRUBLANDS, EASTERN_RHOVANIAN_SHRUBLANDS -> Blocks.COARSE_DIRT.defaultBlockState();
+
+            // Cold north
+            case FORODWAITH_TUNDRA, FORODWAITH_ROCKY_BARRENS -> Blocks.SNOW_BLOCK.defaultBlockState();
+
+            // Dense dark forest floor
             case MIRKWOOD -> Blocks.COARSE_DIRT.defaultBlockState();
-            case DEAD_LANDS_EMPTY -> ModBlocks.CRACKED_MUD.get().defaultBlockState();
-            case FORODWAITH_TUNDRA, FORODWAITH_ROCKY_BARRENS -> ModBlocks.FROZEN_DIRT.get().defaultBlockState();
-            case RHUN_SHRUBLANDS, EASTERN_RHOVANIAN_SHRUBLANDS -> ModBlocks.CRACKED_MUD.get().defaultBlockState();
+
+            // Everything else — grass
             default -> Blocks.GRASS_BLOCK.defaultBlockState();
         };
     }
 
-    private BlockState getLiquidForBiome(LOTRBiome biome) {
-        if (biome == null) {
-            return Blocks.WATER.defaultBlockState();
-        }
-
-        return switch (biome) {
-            case MORDOR_VOLCANIC_WASTE, MOUNTAINS_OF_SHADOW -> Blocks.LAVA.defaultBlockState();
-            case FORODWAITH_TUNDRA, FORODWAITH_ICY_MOUNTAINS, FORODWAITH_ROCKY_BARRENS -> Blocks.ICE.defaultBlockState();
-            default -> Blocks.WATER.defaultBlockState();
-        };
-    }
-
     private BlockState getUnderBlockForBiome(LOTRBiome biome, int terrainHeight) {
-        if (biome == null) {
-            return terrainHeight >= 60 ? Blocks.DIRT.defaultBlockState() : Blocks.STONE.defaultBlockState();
-        }
+        if (biome == null) return Blocks.DIRT.defaultBlockState();
 
         return switch (biome) {
             case HARAD_DESERT -> Blocks.SAND.defaultBlockState();
             case ARNOR_MARSH, VALE_OF_ANDUIN_FLOODPLAINS -> Blocks.MUD.defaultBlockState();
-            case ANDUIN_RIVER, CELDUIN_RIVER -> ModBlocks.SILT.get().defaultBlockState();
-            case MOUNTAINS_OF_SHADOW -> ModBlocks.STONE_TYPES.get("volcanic_stone").stone.get().defaultBlockState();
+            case ANDUIN_RIVER, CELDUIN_RIVER -> Blocks.GRAVEL.defaultBlockState();
             case BLUE_MOUNTAINS, MISTY_MOUNTAINS, GREY_MOUNTAINS, WHITE_MOUNTAINS,
-                 EREBOR, FORODWAITH_ICY_MOUNTAINS, IRON_HILLS -> Blocks.STONE.defaultBlockState();
-            case MORDOR_VOLCANIC_WASTE -> ModBlocks.VOLCANIC_ASH_BLOCK.get().defaultBlockState();
+                 MOUNTAINS_OF_SHADOW, EREBOR, FORODWAITH_ICY_MOUNTAINS, IRON_HILLS -> Blocks.STONE.defaultBlockState();
+            case MORDOR_VOLCANIC_WASTE -> Blocks.GRAVEL.defaultBlockState();
+            case DEAD_LANDS_EMPTY, RHUN_SHRUBLANDS, EASTERN_RHOVANIAN_SHRUBLANDS -> Blocks.DIRT.defaultBlockState();
+            case FORODWAITH_TUNDRA, FORODWAITH_ROCKY_BARRENS -> Blocks.DIRT.defaultBlockState();
             default -> Blocks.DIRT.defaultBlockState();
         };
     }
 
     @Override
-    public void spawnOriginalMobs(WorldGenRegion level) {
+    public void spawnOriginalMobs(WorldGenRegion level) {}
+
+    @Override
+    public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager,
+            StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
+        // Cave generation is handled in fillFromNoise via isNoiseCaveAt().
+        // Suppressing the parent call prevents the vanilla aquifer from flooding caves.
     }
 
     @Override
-    public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
-        // Cave generation is handled directly in fillFromNoise via isNoiseCaveAt().
-        // The inherited NoiseBasedChunkGenerator creates an aquifer from its noise
-        // router density functions — with all-zero values, that aquifer treats every
-        // sub-sea-level void as water-saturated, flooding every cave regardless of
-        // the aquifers_enabled flag in the noise settings.
-    }
+    public int getGenDepth() { return 384; }
 
     @Override
-    public int getGenDepth() {
-        return 384;
-    }
-
-    @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random, StructureManager structureManager, ChunkAccess chunk) {
+    public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random,
+            StructureManager structureManager, ChunkAccess chunk) {
         return CompletableFuture.supplyAsync(() -> {
-            this.doFill(chunk);
+            doFill(chunk);
             return chunk;
         });
     }
@@ -244,18 +211,17 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             for (int z = 0; z < 16; z++) {
                 int worldX = startX + x;
                 int worldZ = startZ + z;
-
                 int height = getTerrainHeight(worldX, worldZ);
 
                 for (int y = chunk.getMinBuildHeight(); y <= Math.min(height, chunk.getMaxBuildHeight() - 1); y++) {
                     pos.set(startX + x, y, startZ + z);
 
                     if (y <= chunk.getMinBuildHeight() + 5) {
-                        if (y == chunk.getMinBuildHeight() || (y <= chunk.getMinBuildHeight() + 4 && Math.random() < 0.8)) {
-                            chunk.setBlockState(pos, Blocks.BEDROCK.defaultBlockState(), false);
-                        } else {
-                            chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
-                        }
+                        boolean isBedrock = (y == chunk.getMinBuildHeight())
+                                || (y <= chunk.getMinBuildHeight() + 4 && Math.random() < 0.8);
+                        chunk.setBlockState(pos,
+                                isBedrock ? Blocks.BEDROCK.defaultBlockState() : Blocks.DEEPSLATE.defaultBlockState(),
+                                false);
                     } else if (isNoiseCaveAt(worldX, y, worldZ, height)) {
                         chunk.setBlockState(pos, Blocks.CAVE_AIR.defaultBlockState(), false);
                     } else if (y < 0) {
@@ -264,82 +230,43 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
                     }
                 }
-
-                // Only fill water where the landmask says it's ocean/coastal.
-                // Inland terrain that dips below sea level stays dry — filling it with
-                // water would flood any cave that the carver punches through nearby stone.
-                if (height < SEA_LEVEL) {
-                    double brightness = LandmaskLoader.isLoaded()
-                        ? LandmaskLoader.getInterpolatedBrightness(worldX, worldZ)
-                        : 255.0;
-                    if (brightness > 140.0) {
-                        LOTRBiome biome = getBiomeAt(worldX, worldZ);
-                        BlockState liquidState = getLiquidForBiome(biome);
-                        for (int y = height + 1; y <= SEA_LEVEL; y++) {
-                            pos.set(startX + x, y, startZ + z);
-                            chunk.setBlockState(pos, liquidState, false);
-                        }
-                    }
-                }
+                // No water filling — the world is entirely dry land.
             }
         }
     }
 
-    /**
-     * Returns true if the block at (worldX, y, worldZ) should be a cave void.
-     *
-     * Uses two independent cave systems:
-     *   - Cheese caves: two orthogonal 3-D noise fields; both near zero = open chamber.
-     *     Threshold grows with depth so chambers are tiny near the surface and enormous
-     *     at bedrock level, producing the classic vanilla "huge deepslate cavern" look.
-     *   - Spaghetti tunnels: a second pair of noise fields with a narrow threshold forms
-     *     thin winding passages that connect the cheese chambers and occasionally surface.
-     *
-     * No aquifer is involved, so all voids are guaranteed dry.
-     */
+    // ======================================================================
+    // CAVE GENERATION — vanilla-inspired noise caves
+    // ======================================================================
+
     private boolean isNoiseCaveAt(int worldX, int y, int worldZ, int terrainHeight) {
         final int BEDROCK_SAFE_Y = -54;
-        if (y <= BEDROCK_SAFE_Y) return false;
-        if (y >= terrainHeight) return false;
+        if (y <= BEDROCK_SAFE_Y || y >= terrainHeight) return false;
 
-        // relDepth: 0 just below the surface, 1 at bedrock
         double relDepth = (double)(terrainHeight - y) / Math.max(1.0, terrainHeight - BEDROCK_SAFE_Y);
-        // Skip the topmost 2 % of terrain depth to avoid caves floating at the surface
         if (relDepth < 0.02) return false;
 
-        // ── CHEESE CAVES ─────────────────────────────────────────────────────────
-        // Two independent noise fields; both near zero = open chamber.
-        // A depth offset causes the cave cross-section to slowly rotate as y changes,
-        // giving natural arched ceilings and floors.
+        // Cheese caves — two orthogonal noise fields; both near zero = open chamber
         double cScale = 1.0 / 90.0;
         double dShift = y * 0.009;
-        double c1 = terrainNoise.getValue(worldX * cScale, worldZ * cScale + dShift, false);
-        double c2 = detailNoise.getValue(
-            (worldX + 9371) * cScale * 0.9,
-            (worldZ + 9371) * cScale * 0.9 - dShift * 1.1,
-            false
-        );
-        // Threshold: 0.05 near surface → 0.35 at bedrock (caves grow dramatically with depth)
+        double c1 = caveNoise1.getValue(worldX * cScale, worldZ * cScale + dShift, false);
+        double c2 = caveNoise2.getValue(
+                (worldX + 9371) * cScale * 0.9,
+                (worldZ + 9371) * cScale * 0.9 - dShift * 1.1,
+                false);
+        // Chambers grow with depth, matching vanilla behaviour
         double cheeseThresh = 0.05 + relDepth * 0.30;
         if (Math.abs(c1) < cheeseThresh && Math.abs(c2) < cheeseThresh) return true;
 
-        // ── SPAGHETTI TUNNELS ────────────────────────────────────────────────────
-        // Narrow winding passages. Not generated in the very top of the terrain so
-        // tunnels appear to emerge from cheese chambers rather than the sky.
+        // Spaghetti tunnels — narrow winding passages connecting chambers
         if (relDepth > 0.05) {
             double sScale = 1.0 / 35.0;
             double sShift = y * 0.020;
-            double s1 = largeScaleCoastNoise.getValue(
-                worldX * sScale + sShift,
-                worldZ * sScale - sShift * 0.8,
-                false
-            );
-            double s2 = mediumScaleCoastNoise.getValue(
-                (worldX + 4000) * sScale,
-                (worldZ + 4000) * sScale + sShift * 1.3,
-                false
-            );
-            // Slightly wider deeper so tunnels open into chambers naturally
+            double s1 = caveNoise1.getValue(worldX * sScale + sShift, worldZ * sScale - sShift * 0.8, false);
+            double s2 = caveNoise2.getValue(
+                    (worldX + 4000) * sScale,
+                    (worldZ + 4000) * sScale + sShift * 1.3,
+                    false);
             double spagThresh = 0.07 + relDepth * 0.05;
             if (Math.abs(s1) < spagThresh && Math.abs(s2) < spagThresh) return true;
         }
@@ -347,366 +274,223 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         return false;
     }
 
-    /**
-     * Calculate the terrain height at a given world position using biome-aware generation.
-     */
+    // ======================================================================
+    // TERRAIN HEIGHT — vanilla-style noise stack
+    // ======================================================================
+
     private int getTerrainHeight(int worldX, int worldZ) {
-        double height = getTerrainHeightAtBiome(worldX, worldZ);
-        return (int) Math.round(height);
+        return (int) Math.round(getTerrainHeightDouble(worldX, worldZ));
     }
 
     /**
-     * ⚠️ CRITICAL FIX: Calculate terrain height by blending ACTUAL HEIGHTS, not just modifiers
-     * 
-     * The old approach blended biome modifiers (mountainFactor, hillFactor), then applied them
-     * to noise. This caused cliffs because different modifiers * same noise = very different heights.
-     * 
-     * The NEW approach:
-     * 1. Generate noise ONCE at the query position
-     * 2. Calculate what the HEIGHT would be at each of 4 corner grid points
-     * 3. Bilinearly interpolate those HEIGHTS
-     * 
-     * This ensures smooth transitions because we're blending the END RESULT, not the multipliers.
+     * Vanilla-inspired terrain height using a continental/erosion/peaks-valleys stack.
+     *
+     * Continental noise sets the broad elevation baseline (like vanilla continentalness).
+     * Erosion noise carves valleys and flattens plains (like vanilla erosion).
+     * Peaks-and-valleys noise adds local relief on top.
+     * Ridge noise shapes mountain spines and passes.
+     *
+     * Biome type modulates how strongly each layer contributes, so mountains are
+     * dramatic while plains stay gently rolling — all from the same noise fields.
      */
-    private double getTerrainHeightAtBiome(int worldX, int worldZ) {
-        // =====================================
-        // STEP 1: Generate base noise values (ONCE, at query position)
-        // =====================================
-        // Generate all noise values ONCE and store them
-        // We'll apply different biome interpretations to these SAME noise values
+    private double getTerrainHeightDouble(int worldX, int worldZ) {
 
-        double largeScale = 1.0 / LARGE_SCALE_WAVELENGTH;
-        double largeNoiseRaw = this.largeScaleCoastNoise.getValue(
-            worldX * largeScale,
-            worldZ * largeScale,
-            false
-        );
+        // ── Continental baseline (very large scale, smooth) ──────────────────
+        double contRaw = continentalNoise.getValue(worldX / 1400.0, worldZ / 1400.0, false);
+        // Shape into 0-1 so we can use it as a multiplier for regional height
+        double continental = (contRaw + 1.0) / 2.0; // 0..1
 
-        double mediumScale = 1.0 / MEDIUM_SCALE_WAVELENGTH;
-        double mediumNoiseRaw = this.mediumScaleCoastNoise.getValue(
-            worldX * mediumScale,
-            worldZ * mediumScale,
-            false
-        );
+        // ── Erosion (determines how flat/hilly an area feels) ─────────────────
+        double erosionRaw = erosionNoise.getValue(worldX / 500.0, worldZ / 500.0, false);
+        // 0 = highly eroded (flat valleys), 1 = uneroded (tall terrain)
+        double erosion = (erosionRaw + 1.0) / 2.0;
 
-        double smallScale = 1.0 / SMALL_SCALE_WAVELENGTH;
-        double smallNoiseRaw = this.smallScaleCoastNoise.getValue(
-            worldX * smallScale,
-            worldZ * smallScale,
-            false
-        );
+        // ── Peaks and valleys (medium-frequency local relief) ─────────────────
+        double pvRaw = peaksValleysNoise.getValue(worldX / 180.0, worldZ / 180.0, false);
+        // Sharpen valley floors and peaks with a squishing transform
+        double pv = squishPeaksValleys(pvRaw);
 
-        double detailScale = 1.0 / DETAIL_SCALE_WAVELENGTH;
-        double detailNoiseRaw = this.detailNoise.getValue(
-            worldX * detailScale,
-            worldZ * detailScale,
-            false
-        );
+        // ── Fine surface detail ───────────────────────────────────────────────
+        double detail = detailNoise.getValue(worldX / 45.0, worldZ / 45.0, false);
 
-        // Mountain-specific noise (normalized 0-1)
-        double mountainNoiseRaw = generateMountainVariationNoiseRaw(worldX, worldZ);
+        // ── Ridge noise for mountain spines ───────────────────────────────────
+        double ridgeRaw = ridgeNoise.getValue(worldX / 220.0, worldZ / 220.0, false);
+        double ridge = 1.0 - Math.abs(ridgeRaw); // 0 = valley, 1 = ridge crest
+        ridge = ridge * ridge; // sharpen
 
-        // Hill-specific noise (returns height in blocks directly)
-        double hillNoiseRaw = generateHillVariationNoiseRaw(worldX, worldZ);
+        // ── Get biome modifiers at this location ──────────────────────────────
+        // Use a 96-block grid + smoothstep to avoid visible grid artefacts
+        final int GRID = 96;
+        int gx0 = Math.floorDiv(worldX, GRID) * GRID;
+        int gz0 = Math.floorDiv(worldZ, GRID) * GRID;
+        double fx = smoothstep((double)(worldX - gx0) / GRID);
+        double fz = smoothstep((double)(worldZ - gz0) / GRID);
 
-        // =====================================
-        // STEP 2: Get grid cell for biome blending
-        // =====================================
-        final int GRID_SIZE = 128;
-        int x0 = Math.floorDiv(worldX, GRID_SIZE) * GRID_SIZE;
-        int z0 = Math.floorDiv(worldZ, GRID_SIZE) * GRID_SIZE;
-        int x1 = x0 + GRID_SIZE;
-        int z1 = z0 + GRID_SIZE;
+        BiomeModifiers m00 = getBiomeModifiersAt(gx0,        gz0);
+        BiomeModifiers m10 = getBiomeModifiersAt(gx0 + GRID, gz0);
+        BiomeModifiers m01 = getBiomeModifiersAt(gx0,        gz0 + GRID);
+        BiomeModifiers m11 = getBiomeModifiersAt(gx0 + GRID, gz0 + GRID);
 
-        double fx = (double)(worldX - x0) / GRID_SIZE;
-        double fz = (double)(worldZ - z0) / GRID_SIZE;
+        // Interpolate the modifier fields themselves (smooth transition between biomes)
+        double baseOffset       = bilinearInterp(m00.baseOffset,       m10.baseOffset,       m01.baseOffset,       m11.baseOffset,       fx, fz);
+        double continentScale   = bilinearInterp(m00.continentScale,   m10.continentScale,   m01.continentScale,   m11.continentScale,   fx, fz);
+        double erosionScale     = bilinearInterp(m00.erosionScale,     m10.erosionScale,     m01.erosionScale,     m11.erosionScale,     fx, fz);
+        double pvScale          = bilinearInterp(m00.pvScale,          m10.pvScale,          m01.pvScale,          m11.pvScale,          fx, fz);
+        double ridgeScale       = bilinearInterp(m00.ridgeScale,       m10.ridgeScale,       m01.ridgeScale,       m11.ridgeScale,       fx, fz);
+        double detailScale      = bilinearInterp(m00.detailScale,      m10.detailScale,      m01.detailScale,      m11.detailScale,      fx, fz);
 
-        // Smoothstep for extra smoothness
-        fx = fx * fx * (3.0 - 2.0 * fx);
-        fz = fz * fz * (3.0 - 2.0 * fz);
+        // ── Combine layers ────────────────────────────────────────────────────
+        double height = SEA_LEVEL
+                + baseOffset
+                + continental * continentScale
+                + (1.0 - erosion) * erosionScale   // high erosion = flat = subtract less
+                + pv * pvScale
+                + ridge * ridgeScale
+                + detail * detailScale;
 
-        // =====================================
-        // STEP 3: Calculate HEIGHT at each corner using SAME noise
-        // =====================================
-        // ⚠️ KEY FIX: We apply each corner's biome properties to the SAME noise values
-        // This means the underlying terrain features are continuous, only the
-        // interpretation changes smoothly between biomes
+        // ── Landmask shapes the broad Middle-earth geography ──────────────────
+        height = applyLandmask(worldX, worldZ, height);
 
-        double height00 = calculateHeightForBiome(worldX, worldZ, x0, z0,
-            largeNoiseRaw, mediumNoiseRaw, smallNoiseRaw, detailNoiseRaw,
-            mountainNoiseRaw, hillNoiseRaw);
+        // Clamp: terrain is never below MIN_TERRAIN_HEIGHT — no water, no voids
+        return Math.max(MIN_TERRAIN_HEIGHT, height);
+    }
 
-        double height10 = calculateHeightForBiome(worldX, worldZ, x1, z0,
-            largeNoiseRaw, mediumNoiseRaw, smallNoiseRaw, detailNoiseRaw,
-            mountainNoiseRaw, hillNoiseRaw);
-
-        double height01 = calculateHeightForBiome(worldX, worldZ, x0, z1,
-            largeNoiseRaw, mediumNoiseRaw, smallNoiseRaw, detailNoiseRaw,
-            mountainNoiseRaw, hillNoiseRaw);
-
-        double height11 = calculateHeightForBiome(worldX, worldZ, x1, z1,
-            largeNoiseRaw, mediumNoiseRaw, smallNoiseRaw, detailNoiseRaw,
-            mountainNoiseRaw, hillNoiseRaw);
-
-        // =====================================
-        // STEP 4: Bilinearly interpolate the HEIGHTS (not the modifiers!)
-        // =====================================
-        double baseTerrainHeight = bilinearInterp(height00, height10, height01, height11, fx, fz);
-
-        // =====================================
-        // STEP 5: Add landmask influence
-        // =====================================
-        double landmaskBias = getLandmaskHeightBias(worldX, worldZ);
-        double finalHeight = baseTerrainHeight + (landmaskBias * LANDMASK_INFLUENCE_STRENGTH);
-
-        // =====================================
-        // STEP 6: Apply ocean transition
-        // =====================================
-        if (LandmaskLoader.isLoaded()) {
-            final double COASTAL_NOISE_SCALE = 1.0 / 80.0;
-            final double COASTAL_NOISE_STRENGTH = 12.0;
-
-            double offsetX = this.coastlineNoise.getValue(
-                worldX * COASTAL_NOISE_SCALE,
-                worldZ * COASTAL_NOISE_SCALE,
-                false
-            ) * COASTAL_NOISE_STRENGTH;
-
-            double offsetZ = this.coastlineNoise.getValue(
-                (worldX + 10000) * COASTAL_NOISE_SCALE,
-                (worldZ + 10000) * COASTAL_NOISE_SCALE,
-                false
-            ) * COASTAL_NOISE_STRENGTH;
-
-            double brightness = LandmaskLoader.getInterpolatedBrightness(
-                worldX + (int)offsetX,
-                worldZ + (int)offsetZ
-            );
-
-            final double LAND_THRESHOLD = 120.0;
-            final double TRANSITION_START = 140.0;
-            final double OCEAN_THRESHOLD = 220.0;
-            final int OCEAN_FLOOR_DEPTH = SEA_LEVEL - 15;
-
-            if (brightness > LAND_THRESHOLD) {
-                if (brightness >= OCEAN_THRESHOLD) {
-                    finalHeight = OCEAN_FLOOR_DEPTH;
-                } else if (brightness >= TRANSITION_START) {
-                    double blendFactor = (brightness - TRANSITION_START) / (OCEAN_THRESHOLD - TRANSITION_START);
-                    blendFactor = blendFactor * blendFactor * (3.0 - 2.0 * blendFactor);
-                    finalHeight = finalHeight * (1.0 - blendFactor) + OCEAN_FLOOR_DEPTH * blendFactor;
-                } else {
-                    double gentleFactor = (brightness - LAND_THRESHOLD) / (TRANSITION_START - LAND_THRESHOLD);
-                    gentleFactor = gentleFactor * gentleFactor;
-
-                    if (finalHeight > SEA_LEVEL + 20) {
-                        double excessHeight = finalHeight - (SEA_LEVEL + 20);
-                        double reducedHeight = (SEA_LEVEL + 20) + excessHeight * (1.0 - gentleFactor * 0.5);
-                        finalHeight = reducedHeight;
-                    }
-                }
-            }
+    /**
+     * Squishes the peaks-and-valleys noise so valley floors are flat and
+     * ridge crests are sharp — mirrors what vanilla's PV spline does.
+     */
+    private double squishPeaksValleys(double raw) {
+        // raw in [-1, 1]; fold negative (valleys) to compress them,
+        // amplify positive (peaks) slightly
+        if (raw < 0) {
+            return raw * 0.5; // valleys are gentle
+        } else {
+            return raw * 1.2; // peaks are a bit sharper
         }
+    }
 
-        return finalHeight;
+    private double smoothstep(double t) {
+        return t * t * (3.0 - 2.0 * t);
     }
 
     /**
-     * ⚠️ NEW METHOD: Calculate the terrain height for a specific biome location
-     * using pre-generated noise values.
-     * 
-     * This applies the biome-specific interpretation (mountain scale, hill factor, etc.)
-     * to the SAME noise values that are used everywhere. This ensures terrain continuity.
-     * 
-     * @param queryX, queryZ - The position we're calculating height for (for landmask/region lookup)
-     * @param biomeX, biomeZ - The grid position to sample biome properties from
-     * @param largeNoiseRaw, mediumNoiseRaw, smallNoiseRaw, detailNoiseRaw - Raw noise values (-1 to 1)
-     * @param mountainNoiseRaw - Normalized mountain noise (0 to 1)
-     * @param hillNoiseRaw - Hill noise in blocks
-     * @return The terrain height at this location
+     * Uses the landmask to shape Middle-earth's geography.
+     * Ocean pixels → lower terrain (dry plains/lowlands, not water).
+     * Land pixels → terrain unmodified.
+     * Coastal zones get a gentle slope.
      */
-    private double calculateHeightForBiome(
-        int queryX, int queryZ,  // Where we're calculating
-        int biomeX, int biomeZ,   // Where we sample biome from
-        double largeNoiseRaw,
-        double mediumNoiseRaw,
-        double smallNoiseRaw,
-        double detailNoiseRaw,
-        double mountainNoiseRaw,
-        double hillNoiseRaw
-    ) {
-        // Get biome modifiers at the biome sample position
-        BiomeModifiers modifiers = getBiomeModifiersAt(biomeX, biomeZ);
+    private double applyLandmask(int worldX, int worldZ, double height) {
+        if (!LandmaskLoader.isLoaded()) return height;
 
-        // Apply amplitude scaling to raw noise based on biome type
-        double largeNoise = largeNoiseRaw * LARGE_SCALE_AMPLITUDE;
-        double mediumNoise = mediumNoiseRaw * MEDIUM_SCALE_AMPLITUDE;
-        double smallNoise = smallNoiseRaw * SMALL_SCALE_AMPLITUDE;
-        double detailNoise = detailNoiseRaw * DETAIL_SCALE_AMPLITUDE;
-
-        // Calculate base height from multi-scale noise
-        double baseHeight = SEA_LEVEL +
-                           (largeNoise * modifiers.terrainVariationScale) +
-                           (mediumNoise * modifiers.terrainVariationScale) +
-                           (smallNoise * modifiers.terrainVariationScale * 0.5) +
-                           (detailNoise * modifiers.terrainVariationScale * 0.3);
-
-        // Add mountain variation (if this biome has mountains)
-        double mountainVariation = mountainNoiseRaw * modifiers.mountainBaseHeight;
-
-        // Add hill variation (if this biome has hills)
-        double hillVariation = hillNoiseRaw * modifiers.hillFactor;
-
-        // Add base height offset (e.g., rivers are lower)
-        double heightOffset = modifiers.baseHeightOffset;
-
-        // Combine all components
-        return baseHeight + mountainVariation + hillVariation + heightOffset;
-    }
-
-    /**
-     * Generate raw mountain noise (returns 0-1, NOT scaled by amplitude yet)
-     * Uses ridged noise for jagged, sharp peaks and an additional high-frequency
-     * octave for fine-grained ruggedness.
-     */
-    private double generateMountainVariationNoiseRaw(int worldX, int worldZ) {
-        double mountainScale1 = 1.0 / 400.0;  // Large envelope
-        double mountainScale2 = 1.0 / 150.0;  // Medium ridges
-        double mountainScale3 = 1.0 / 50.0;   // Small ridges
-        double mountainScale4 = 1.0 / 20.0;   // Fine jaggedness
-
-        double noise1 = this.terrainNoise.getValue(worldX * mountainScale1, worldZ * mountainScale1, false);
-        double noise2 = this.terrainNoise.getValue(worldX * mountainScale2, worldZ * mountainScale2, false);
-        double noise3 = this.detailNoise.getValue(worldX * mountainScale3, worldZ * mountainScale3, false);
-        double noise4 = this.detailNoise.getValue(worldX * mountainScale4, worldZ * mountainScale4, false);
-
-        // Large-scale envelope controls where mountains exist (smooth 0-1)
-        double envelope = (noise1 + 1.0) / 2.0;
-
-        // Ridged noise: sharp peaks where noise crosses zero
-        double ridge2 = 1.0 - Math.abs(noise2);
-        double ridge3 = 1.0 - Math.abs(noise3);
-
-        // Combine ridged octaves with fine jaggedness for sharp, erratic peaks
-        double jagged = ridge2 * 0.4 + ridge3 * 0.35 + Math.abs(noise4) * 0.25;
-
-        // Envelope shapes overall mountain placement; jagged shapes the peaks
-        double combined = envelope * jagged;
-
-        return combined * combined;  // Square for dramatic peaks
-    }
-
-    /**
-     * Generate raw hill noise (returns height in blocks)
-     */
-    private double generateHillVariationNoiseRaw(int worldX, int worldZ) {
-        double hillScale = 1.0 / 250.0;
-        double hillNoise = this.terrainNoise.getValue(worldX * hillScale, worldZ * hillScale, false);
-        // Raw noise gives genuine ±variation so terrain rolls up AND down (not just up)
-        return hillNoise * 15.0;
-    }
-
-    private double getLandmaskHeightBias(int worldX, int worldZ) {
-        if (!LandmaskLoader.isLoaded()) {
-            return 0.0;
-        }
-
-        final double COASTAL_NOISE_SCALE = 1.0 / 80.0;
-        final double COASTAL_NOISE_STRENGTH = 12.0;
-
-        double offsetX = this.coastlineNoise.getValue(
-            worldX * COASTAL_NOISE_SCALE,
-            worldZ * COASTAL_NOISE_SCALE,
-            false
-        ) * COASTAL_NOISE_STRENGTH;
-
-        double offsetZ = this.coastlineNoise.getValue(
-            (worldX + 10000) * COASTAL_NOISE_SCALE,
-            (worldZ + 10000) * COASTAL_NOISE_SCALE,
-            false
-        ) * COASTAL_NOISE_STRENGTH;
+        double noiseOffX = coastlineNoise.getValue(worldX / 80.0, worldZ / 80.0, false) * 10.0;
+        double noiseOffZ = coastlineNoise.getValue((worldX + 10000) / 80.0, (worldZ + 10000) / 80.0, false) * 10.0;
 
         double brightness = LandmaskLoader.getInterpolatedBrightness(
-            worldX + (int)offsetX,
-            worldZ + (int)offsetZ
-        );
+                worldX + (int) noiseOffX,
+                worldZ + (int) noiseOffZ);
 
-        double normalized = 1.0 - (brightness / 127.5);
-        return normalized * LANDMASK_HEIGHT_BIAS;
-    }
+        final double LAND_MAX       = 100.0;  // fully land
+        final double COAST_START    = 140.0;  // start of coastal lowering
+        final double OCEAN_MIN      = 210.0;  // fully "ocean" → low dry terrain
 
-    private boolean isLandAt(int worldX, int worldZ) {
-        int terrainHeight = getTerrainHeight(worldX, worldZ);
-        return terrainHeight >= SEA_LEVEL;
-    }
-
-    private LOTRBiome getBiomeAt(int worldX, int worldZ) {
-        if (!(this.getBiomeSource() instanceof MiddleEarthBiomeSource middleEarthSource)) {
-            return null;
+        if (brightness <= LAND_MAX) {
+            // Deep inland: landmask pushes height up slightly for prominence
+            double boost = ((LAND_MAX - brightness) / LAND_MAX) * 8.0;
+            return height + boost;
+        } else if (brightness < COAST_START) {
+            // Near-coastal land: no change
+            return height;
+        } else if (brightness < OCEAN_MIN) {
+            // Coastal transition: gradually lower toward lowland plains
+            double t = (brightness - COAST_START) / (OCEAN_MIN - COAST_START);
+            t = smoothstep(t);
+            double lowlandTarget = SEA_LEVEL + 8.0; // low but still dry
+            return height * (1.0 - t) + lowlandTarget * t;
+        } else {
+            // Ocean pixel → lowland plains, still fully dry
+            return SEA_LEVEL + 5.0;
         }
-        return middleEarthSource.getLOTRBiomeAt(worldX, worldZ);
     }
+
+    // ======================================================================
+    // BIOME MODIFIERS
+    // ======================================================================
 
     private static class BiomeModifiers {
-        double flatFactor = 0.0;
-        double hillFactor = 0.0;
-        double mountainFactor = 0.0;
-        double riverFactor = 0.0;
-
-        double baseHeightOffset = 0.0;
-        double terrainVariationScale = 0.0;
-        double mountainBaseHeight = 0.0;
-    }
-
-    private double bilinearInterp(double v00, double v10, double v01, double v11, double fx, double fz) {
-        double v0 = v00 * (1.0 - fx) + v10 * fx;
-        double v1 = v01 * (1.0 - fx) + v11 * fx;
-        return v0 * (1.0 - fz) + v1 * fz;
+        double baseOffset     = 10.0;  // vertical shift above sea level
+        double continentScale = 20.0;  // how much continental noise contributes
+        double erosionScale   = 15.0;  // how deep erosion carves
+        double pvScale        = 18.0;  // peaks-and-valleys amplitude
+        double ridgeScale     =  0.0;  // mountain ridges (0 for flat/hilly biomes)
+        double detailScale    =  4.0;  // surface detail amplitude
     }
 
     private BiomeModifiers getBiomeModifiersAt(int worldX, int worldZ) {
-        BiomeModifiers result = new BiomeModifiers();
-
+        BiomeModifiers m = new BiomeModifiers();
         LOTRBiome biome = getBiomeAt(worldX, worldZ);
-        if (biome == null) {
-            result.flatFactor = 1.0;
-            result.terrainVariationScale = 1.0;
-            return result;
-        }
+        if (biome == null) return m;
 
-        if (biome.isRiver()) {
-            result.riverFactor = 1.0;
-            result.baseHeightOffset = -8.0;
-            result.terrainVariationScale = 0.2;
-        } else if (biome.isMountain()) {
-            result.mountainFactor = 1.0;
-
-            double mountainScale = switch (biome) {
-                case BLUE_MOUNTAINS, MISTY_MOUNTAINS, MOUNTAINS_OF_SHADOW -> 200.0;
-                case WHITE_MOUNTAINS, GREY_MOUNTAINS -> 160.0;
-                case IRON_HILLS, EREBOR, FORODWAITH_ICY_MOUNTAINS -> 120.0;
-                default -> 80.0;
+        if (biome.isMountain()) {
+            double peakHeight = switch (biome) {
+                case BLUE_MOUNTAINS, MISTY_MOUNTAINS, MOUNTAINS_OF_SHADOW -> 110.0;
+                case WHITE_MOUNTAINS, GREY_MOUNTAINS                       ->  85.0;
+                case IRON_HILLS, EREBOR, FORODWAITH_ICY_MOUNTAINS          ->  60.0;
+                default                                                    ->  45.0;
             };
+            m.baseOffset     = 25.0;
+            m.continentScale = 30.0;
+            m.erosionScale   = 10.0;  // mountains resist erosion
+            m.pvScale        = 40.0;
+            m.ridgeScale     = peakHeight;
+            m.detailScale    =  8.0;
 
-            result.mountainBaseHeight = mountainScale;
-            result.baseHeightOffset = 0.0;
-            result.terrainVariationScale = 1.5;
+        } else if (biome.isRiver()) {
+            // Dry riverbeds: gently lower than surroundings but above sea level
+            m.baseOffset     =  4.0;
+            m.continentScale = 10.0;
+            m.erosionScale   = 20.0;  // heavily eroded = low and flat
+            m.pvScale        =  6.0;
+            m.ridgeScale     =  0.0;
+            m.detailScale    =  3.0;
+
         } else if (biome.isHilly()) {
-            result.hillFactor = 1.0;
-            result.baseHeightOffset = 0.0;
-            result.terrainVariationScale = 1.0;
+            // Rolling hills (Shire, Limestone Hills, Rocky Hills, etc.)
+            m.baseOffset     = 12.0;
+            m.continentScale = 18.0;
+            m.erosionScale   = 14.0;
+            m.pvScale        = 22.0;
+            m.ridgeScale     =  0.0;
+            m.detailScale    =  5.0;
+
         } else if (isFlatBiome(biome)) {
-            result.flatFactor = 1.0;
-            result.hillFactor = 0.9;
-            result.baseHeightOffset = 8.0;  // Keep flat biomes above sea level
-            result.terrainVariationScale = 0.7;
+            // Plains — still rolling, just less dramatic than hills
+            m.baseOffset     = 10.0;
+            m.continentScale = 14.0;
+            m.erosionScale   = 18.0;  // more erosion = flatter valleys
+            m.pvScale        = 12.0;
+            m.ridgeScale     =  0.0;
+            m.detailScale    =  4.0;
+
+        } else if (isForestBiome(biome)) {
+            // Forest — mid-range variation, terrain defined by trees not shape
+            m.baseOffset     = 10.0;
+            m.continentScale = 16.0;
+            m.erosionScale   = 16.0;
+            m.pvScale        = 16.0;
+            m.ridgeScale     =  0.0;
+            m.detailScale    =  5.0;
+
         } else {
-            result.hillFactor = 0.9;
-            result.flatFactor = 0.5;
-            result.terrainVariationScale = 0.8;
+            // Default mixed terrain
+            m.baseOffset     = 10.0;
+            m.continentScale = 18.0;
+            m.erosionScale   = 16.0;
+            m.pvScale        = 18.0;
+            m.ridgeScale     =  0.0;
+            m.detailScale    =  5.0;
         }
 
-        return result;
+        return m;
     }
 
     private boolean isFlatBiome(LOTRBiome biome) {
@@ -715,20 +499,49 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                  ROHAN_GRASSLAND, RHUN_GRASSLAND, EASTERN_RHOVANIAN_GRASSLAND,
                  HARAD_DESERT, LINDON_MEADOW, HARAD_SAVANNA,
                  VALE_OF_ANDUIN_FLOODPLAINS, ARNOR_MARSH,
-                 DEAD_LANDS_EMPTY, THE_SHIRE -> true;
+                 DEAD_LANDS_EMPTY, THE_SHIRE, SEA_OF_RHUN -> true;
             default -> false;
         };
     }
 
-    @Override
-    public int getSeaLevel() {
-        return SEA_LEVEL;
+    private boolean isForestBiome(LOTRBiome biome) {
+        return switch (biome) {
+            case MIRKWOOD, FANGORN_FOREST,
+                 ERIADOR_MIXED_FOREST, ERIADOR_OLD_FOREST,
+                 ARNOR_OLD_FOREST,
+                 GONDOR_OLIVE_FOREST,
+                 DALE_MIXED_FOREST,
+                 LINDON_BEECH_FOREST,
+                 HARAD_JUNGLE,
+                 LOTHLORIEN -> true;
+            default -> false;
+        };
     }
 
-    @Override
-    public int getMinY() {
-        return -64;
+    // ======================================================================
+    // HELPERS
+    // ======================================================================
+
+    private LOTRBiome getBiomeAt(int worldX, int worldZ) {
+        if (!(getBiomeSource() instanceof MiddleEarthBiomeSource src)) return null;
+        return src.getLOTRBiomeAt(worldX, worldZ);
     }
+
+    private double bilinearInterp(double v00, double v10, double v01, double v11, double fx, double fz) {
+        double v0 = v00 * (1.0 - fx) + v10 * fx;
+        double v1 = v01 * (1.0 - fx) + v11 * fx;
+        return v0 * (1.0 - fz) + v1 * fz;
+    }
+
+    // ======================================================================
+    // OVERRIDES
+    // ======================================================================
+
+    @Override
+    public int getSeaLevel() { return SEA_LEVEL; }
+
+    @Override
+    public int getMinY() { return -64; }
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types heightmapType, LevelHeightAccessor level, RandomState random) {
@@ -744,8 +557,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             int y = level.getMinBuildHeight() + i;
             if (y <= height) {
                 states[i] = y < 0 ? Blocks.DEEPSLATE.defaultBlockState() : Blocks.STONE.defaultBlockState();
-            } else if (y <= SEA_LEVEL) {
-                states[i] = Blocks.WATER.defaultBlockState();
             } else {
                 states[i] = Blocks.AIR.defaultBlockState();
             }
@@ -757,35 +568,24 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     @Override
     public void addDebugScreenInfo(List<String> info, RandomState random, BlockPos pos) {
         info.add("Middle-earth Chunk Generator");
-        info.add("Landmask loaded: " + LandmaskLoader.isLoaded());
-        info.add("Region map loaded: " + RegionMapLoader.isLoaded());
+        info.add("Landmask: " + LandmaskLoader.isLoaded());
+        info.add("Region map: " + RegionMapLoader.isLoaded());
 
         if (RegionMapLoader.isLoaded()) {
             Region region = RegionMapLoader.getRegion(pos.getX(), pos.getZ());
             info.add("Region: " + region.getDisplayName());
-
-            int color = RegionMapLoader.getInterpolatedColor(pos.getX(), pos.getZ());
-            int r = (color >> 16) & 0xFF;
-            int g = (color >> 8) & 0xFF;
-            int b = color & 0xFF;
-            info.add(String.format("Region RGB: (%d, %d, %d)", r, g, b));
         }
 
         LOTRBiome biome = getBiomeAt(pos.getX(), pos.getZ());
         if (biome != null) {
             info.add("LOTR Biome: " + biome.getName());
-            info.add("Is Mountain: " + biome.isMountain());
-            info.add("Is River: " + biome.isRiver());
-            info.add("Is Hilly: " + biome.isHilly());
         }
 
         if (LandmaskLoader.isLoaded()) {
             double brightness = LandmaskLoader.getInterpolatedBrightness(pos.getX(), pos.getZ());
-            info.add(String.format("Landmask: %.1f", brightness));
+            info.add(String.format("Landmask brightness: %.1f", brightness));
         }
 
-        int terrainHeight = getTerrainHeight(pos.getX(), pos.getZ());
-        info.add("Terrain height: " + terrainHeight);
-        info.add("Is land: " + isLandAt(pos.getX(), pos.getZ()));
+        info.add("Terrain height: " + getTerrainHeight(pos.getX(), pos.getZ()));
     }
 }
