@@ -40,9 +40,7 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private final PerlinSimplexNoise detailNoise;        // Surface fine detail
     private final PerlinSimplexNoise ridgeNoise;         // Mountain ridgelines
 
-    // Used for cave generation and biome jitter
-    private final PerlinSimplexNoise caveNoise1;
-    private final PerlinSimplexNoise caveNoise2;
+    // Used for biome boundary jitter and landmask coastline noise
     private final PerlinSimplexNoise coastlineNoise;
 
     private static final int SEA_LEVEL = 63;
@@ -60,8 +58,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         this.ridgeNoise        = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
 
         RandomSource r2 = RandomSource.create(98765L);
-        this.caveNoise1    = new PerlinSimplexNoise(r2, List.of(0, 1, 2, 3));
-        this.caveNoise2    = new PerlinSimplexNoise(r2, List.of(0, 1, 2, 3));
         this.coastlineNoise = new PerlinSimplexNoise(r2, List.of(0, 1, 2));
     }
 
@@ -184,8 +180,9 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     @Override
     public void applyCarvers(WorldGenRegion level, long seed, RandomState randomState, BiomeManager biomeManager,
             StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step) {
-        // Cave generation is handled in fillFromNoise via isNoiseCaveAt().
-        // Suppressing the parent call prevents the vanilla aquifer from flooding caves.
+        // Vanilla carvers (cave, canyon, extra_underground) defined in biome JSONs.
+        // aquifers_enabled=false in noise settings ensures no water spawns in carved voids.
+        super.applyCarvers(level, seed, randomState, biomeManager, structureManager, chunk, step);
     }
 
     @Override
@@ -211,9 +208,9 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             for (int z = 0; z < 16; z++) {
                 int worldX = startX + x;
                 int worldZ = startZ + z;
-                int height = getTerrainHeight(worldX, worldZ);
+                int terrainTop = getTerrainHeight(worldX, worldZ);
 
-                for (int y = chunk.getMinBuildHeight(); y <= Math.min(height, chunk.getMaxBuildHeight() - 1); y++) {
+                for (int y = chunk.getMinBuildHeight(); y <= Math.min(terrainTop, chunk.getMaxBuildHeight() - 1); y++) {
                     pos.set(startX + x, y, startZ + z);
 
                     if (y <= chunk.getMinBuildHeight() + 5) {
@@ -222,8 +219,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         chunk.setBlockState(pos,
                                 isBedrock ? Blocks.BEDROCK.defaultBlockState() : Blocks.DEEPSLATE.defaultBlockState(),
                                 false);
-                    } else if (isNoiseCaveAt(worldX, y, worldZ, height)) {
-                        chunk.setBlockState(pos, Blocks.CAVE_AIR.defaultBlockState(), false);
                     } else if (y < 0) {
                         chunk.setBlockState(pos, Blocks.DEEPSLATE.defaultBlockState(), false);
                     } else {
@@ -233,45 +228,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 // No water filling — the world is entirely dry land.
             }
         }
-    }
-
-    // ======================================================================
-    // CAVE GENERATION — vanilla-inspired noise caves
-    // ======================================================================
-
-    private boolean isNoiseCaveAt(int worldX, int y, int worldZ, int terrainHeight) {
-        final int BEDROCK_SAFE_Y = -54;
-        if (y <= BEDROCK_SAFE_Y || y >= terrainHeight) return false;
-
-        double relDepth = (double)(terrainHeight - y) / Math.max(1.0, terrainHeight - BEDROCK_SAFE_Y);
-        if (relDepth < 0.02) return false;
-
-        // Cheese caves — two orthogonal noise fields; both near zero = open chamber
-        double cScale = 1.0 / 90.0;
-        double dShift = y * 0.009;
-        double c1 = caveNoise1.getValue(worldX * cScale, worldZ * cScale + dShift, false);
-        double c2 = caveNoise2.getValue(
-                (worldX + 9371) * cScale * 0.9,
-                (worldZ + 9371) * cScale * 0.9 - dShift * 1.1,
-                false);
-        // Chambers grow with depth, matching vanilla behaviour
-        double cheeseThresh = 0.05 + relDepth * 0.30;
-        if (Math.abs(c1) < cheeseThresh && Math.abs(c2) < cheeseThresh) return true;
-
-        // Spaghetti tunnels — narrow winding passages connecting chambers
-        if (relDepth > 0.05) {
-            double sScale = 1.0 / 35.0;
-            double sShift = y * 0.020;
-            double s1 = caveNoise1.getValue(worldX * sScale + sShift, worldZ * sScale - sShift * 0.8, false);
-            double s2 = caveNoise2.getValue(
-                    (worldX + 4000) * sScale,
-                    (worldZ + 4000) * sScale + sShift * 1.3,
-                    false);
-            double spagThresh = 0.07 + relDepth * 0.05;
-            if (Math.abs(s1) < spagThresh && Math.abs(s2) < spagThresh) return true;
-        }
-
-        return false;
     }
 
     // ======================================================================
