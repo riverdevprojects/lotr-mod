@@ -76,14 +76,10 @@
       "minecraft:ore_copper"
     ],
     [
-      "minecraft:amethyst_geode",
-      "minecraft:infested_stone_upper",
-      "minecraft:infested_stone_lower",
-      "minecraft:underground_magma"
+      "minecraft:amethyst_geode"
     ],
     [],
     [
-      "minecraft:trees_forest",
       "minecraft:patch_grass_forest"
     ],
     []
