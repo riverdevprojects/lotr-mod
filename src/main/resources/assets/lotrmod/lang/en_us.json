@@ -10,5 +10,6 @@
   "item.lotrmod.war_banner": "War Banner",
   "item.lotrmod.silver_ingot": "Silver Ingot",
 
-  "entity.lotrmod.guild_guard": "Guild Guard"
+  "entity.lotrmod.guild_guard": "Guild Guard",
+  "entity.lotrmod.fake_player": "Fake Player"
 }

@@ -3,8 +3,11 @@ package com.lotrmod.conquest.command;
 import com.lotrmod.conquest.block.ClaimBannerBlock;
 import com.lotrmod.conquest.block.ClaimBannerBlockEntity;
 import com.lotrmod.conquest.data.*;
+import com.lotrmod.conquest.entity.FakePlayerEntity;
+import com.lotrmod.conquest.network.S2CFakePlayerScreenPacket;
 import com.lotrmod.conquest.network.S2CGuildDataPacket;
 import com.lotrmod.conquest.registry.ConquestBlocks;
+import com.lotrmod.conquest.registry.ConquestEntities;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -39,6 +42,12 @@ import java.util.stream.Collectors;
  * /guilddebug disbandforce <guildname>
  * /guilddebug showchunk                  — who owns the current chunk
  * /guilddebug ui <guildname>             — open guild UI for <guildname> on your screen
+ *
+ * Fake player commands (testing second player without a second account):
+ * /guilddebug spawnfakeplayer <name>     — spawn a fake player NPC at your feet
+ * /guilddebug removefakeplayer <name>    — despawn fake player(s) with that name
+ * /guilddebug listfakeplayers            — list all fake players within 512 blocks
+ * /guilddebug fpscreen <name>            — open the fake player control screen directly
  */
 public class GuildDebugCommand {
 
@@ -114,6 +123,22 @@ public class GuildDebugCommand {
             .then(Commands.literal("ui")
                 .then(Commands.argument("guildname", StringArgumentType.greedyString())
                     .executes(ctx -> openUI(ctx, StringArgumentType.getString(ctx, "guildname")))))
+
+            // ── Fake player commands ──────────────────────────────────────
+            .then(Commands.literal("spawnfakeplayer")
+                .then(Commands.argument("name", StringArgumentType.word())
+                    .executes(ctx -> spawnFakePlayer(ctx, StringArgumentType.getString(ctx, "name")))))
+
+            .then(Commands.literal("removefakeplayer")
+                .then(Commands.argument("name", StringArgumentType.word())
+                    .executes(ctx -> removeFakePlayer(ctx, StringArgumentType.getString(ctx, "name")))))
+
+            .then(Commands.literal("listfakeplayers")
+                .executes(GuildDebugCommand::listFakePlayers))
+
+            .then(Commands.literal("fpscreen")
+                .then(Commands.argument("name", StringArgumentType.word())
+                    .executes(ctx -> openFakePlayerScreen(ctx, StringArgumentType.getString(ctx, "name")))))
         );
     }
 
@@ -351,6 +376,80 @@ public class GuildDebugCommand {
         if (g == null) return fail(ctx, "Guild not found: " + guildName);
         S2CGuildDataPacket pkt = GuildCommand.buildPacket(g, data, player);
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, pkt);
+        return 1;
+    }
+
+    // ── /guilddebug spawnfakeplayer <name> ───────────────────────────────────
+
+    private static int spawnFakePlayer(CommandContext<CommandSourceStack> ctx, String name) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return fail(ctx, "Must be run by a player.");
+
+        ServerLevel level = player.serverLevel();
+        FakePlayerEntity entity = ConquestEntities.FAKE_PLAYER_ENTITY.get().create(level);
+        if (entity == null) return fail(ctx, "Failed to create entity.");
+
+        UUID fakeUUID = UUID.nameUUIDFromBytes(("fakeplayer:" + name).getBytes());
+        entity.setFakeIdentity(name, fakeUUID);
+        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0);
+        level.addFreshEntity(entity);
+
+        send(ctx, "Spawned fake player '" + name + "' (UUID: " + fakeUUID.toString().substring(0, 8) + "...).");
+        send(ctx, "Right-click the entity to open its control screen.");
+        return 1;
+    }
+
+    // ── /guilddebug removefakeplayer <name> ──────────────────────────────────
+
+    private static int removeFakePlayer(CommandContext<CommandSourceStack> ctx, String name) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return fail(ctx, "Must be run by a player.");
+
+        UUID fakeUUID = UUID.nameUUIDFromBytes(("fakeplayer:" + name).getBytes());
+        ServerLevel level = player.serverLevel();
+
+        List<FakePlayerEntity> found = level.getEntitiesOfClass(FakePlayerEntity.class,
+            player.getBoundingBox().inflate(512),
+            e -> name.equals(e.getFakeName()) || fakeUUID.equals(e.getFakeUUID()));
+
+        if (found.isEmpty()) return fail(ctx, "No fake player named '" + name + "' found nearby.");
+        found.forEach(e -> e.discard());
+        send(ctx, "Removed " + found.size() + " fake player(s) named '" + name + "'.");
+        return 1;
+    }
+
+    // ── /guilddebug listfakeplayers ───────────────────────────────────────────
+
+    private static int listFakePlayers(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return fail(ctx, "Must be run by a player.");
+
+        ServerLevel level = player.serverLevel();
+        List<FakePlayerEntity> found = level.getEntitiesOfClass(FakePlayerEntity.class,
+            player.getBoundingBox().inflate(512));
+
+        if (found.isEmpty()) { send(ctx, "No fake players in range."); return 1; }
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        send(ctx, "=== " + found.size() + " fake player(s) ===");
+        for (FakePlayerEntity e : found) {
+            Guild g = data.getGuildForPlayer(e.getFakeUUID());
+            String gInfo = g != null ? "guild: " + g.name : "no guild";
+            send(ctx, "  " + e.getFakeName() + "  uuid:" + e.getFakeUUID().toString().substring(0, 8) + "...  " + gInfo);
+        }
+        return 1;
+    }
+
+    // ── /guilddebug fpscreen <name> ───────────────────────────────────────────
+
+    private static int openFakePlayerScreen(CommandContext<CommandSourceStack> ctx, String name) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return fail(ctx, "Must be run by a player.");
+
+        UUID fakeUUID = UUID.nameUUIDFromBytes(("fakeplayer:" + name).getBytes());
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = data.getGuildForPlayer(fakeUUID);
+        PacketDistributor.sendToPlayer(player, S2CFakePlayerScreenPacket.build(fakeUUID, name, guild, data));
         return 1;
     }
 

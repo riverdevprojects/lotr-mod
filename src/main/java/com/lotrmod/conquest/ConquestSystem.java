@@ -2,6 +2,7 @@ package com.lotrmod.conquest;
 
 import com.lotrmod.conquest.command.GuildCommand;
 import com.lotrmod.conquest.command.GuildDebugCommand;
+import com.lotrmod.conquest.entity.FakePlayerEntity;
 import com.lotrmod.conquest.entity.GuardEntity;
 import com.lotrmod.conquest.event.ClaimProtectionHandler;
 import com.lotrmod.conquest.event.UpkeepHandler;
@@ -46,7 +47,8 @@ public class ConquestSystem {
     }
 
     private static void registerEntityAttributes(EntityAttributeCreationEvent event) {
-        event.put(ConquestEntities.GUILD_GUARD.get(), GuardEntity.createAttributes().build());
+        event.put(ConquestEntities.GUILD_GUARD.get(),       GuardEntity.createAttributes().build());
+        event.put(ConquestEntities.FAKE_PLAYER_ENTITY.get(), FakePlayerEntity.createAttributes().build());
     }
 
     /** Called from RegisterCommandsEvent in LOTRMod. */

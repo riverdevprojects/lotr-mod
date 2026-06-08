@@ -1,6 +1,7 @@
 package com.lotrmod.conquest.registry;
 
 import com.lotrmod.LOTRMod;
+import com.lotrmod.conquest.entity.FakePlayerEntity;
 import com.lotrmod.conquest.entity.GuardEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
@@ -21,7 +22,16 @@ public class ConquestEntities {
                 .clientTrackingRange(64)
                 .build("lotrmod:guild_guard"));
 
+    /** Debug-only fake player NPC. Stationary, right-click to open control screen. */
+    public static final DeferredHolder<EntityType<?>, EntityType<FakePlayerEntity>> FAKE_PLAYER_ENTITY =
+        ENTITIES.register("fake_player", () ->
+            EntityType.Builder.<FakePlayerEntity>of(FakePlayerEntity::new, MobCategory.MISC)
+                .sized(0.6f, 1.95f)
+                .clientTrackingRange(64)
+                .build("lotrmod:fake_player"));
+
     public static void register(IEventBus bus) {
         ENTITIES.register(bus);
     }
 }
+
