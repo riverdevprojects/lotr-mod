@@ -59,7 +59,8 @@ public class FakePlayerScreen extends Screen {
         rebuildWidgets();
     }
 
-    private void rebuildWidgets() {
+    @Override
+    protected void rebuildWidgets() {
         clearWidgets();
 
         int panelW = Math.min(400, width - 40);
