@@ -13,5 +13,6 @@ public class ConquestClientSetup {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ConquestEntities.FAKE_PLAYER_ENTITY.get(), FakePlayerRenderer::new);
+        event.registerEntityRenderer(ConquestEntities.GUILD_GUARD.get(), GuardRenderer::new);
     }
 }
