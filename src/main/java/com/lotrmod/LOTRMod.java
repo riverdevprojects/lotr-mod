@@ -2,6 +2,7 @@ package com.lotrmod;
 
 import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
+import com.lotrmod.conquest.ConquestSystem;
 import com.lotrmod.item.ModItems;
 import com.lotrmod.worldgen.LOTRWorldGen;
 import com.lotrmod.worldgen.LandmaskLoader;
@@ -36,6 +37,9 @@ public class LOTRMod {
         LOTRWorldGen.register(modEventBus);
         ModFeatures.register(modEventBus);
 
+        // Register conquest system (guilds, claims, war, guards)
+        ConquestSystem.register(modEventBus, modContainer);
+
         NeoForge.EVENT_BUS.register(this);
 
         LOGGER.info("Lord of the Rings Mod initializing...");
@@ -66,6 +70,7 @@ public class LOTRMod {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         MiddleEarthCommand.register(event.getDispatcher());
-        LOGGER.info("Registered /middleearth command");
+        ConquestSystem.registerCommands(event.getDispatcher());
+        LOGGER.info("Registered /middleearth, /guild, /guilddebug commands");
     }
 }

@@ -1,3 +1,14 @@
 {
-  "dimension.lotrmod.middleearth": "Middle-earth"
+  "dimension.lotrmod.middleearth": "Middle-earth",
+
+  "block.lotrmod.claim_banner_base": "Claim Banner",
+  "block.lotrmod.claim_banner_pole": "Claim Banner Pole",
+  "block.lotrmod.claim_banner_top": "Claim Banner Top",
+  "block.lotrmod.war_banner": "War Banner",
+
+  "item.lotrmod.claim_banner_base": "Claim Banner",
+  "item.lotrmod.war_banner": "War Banner",
+  "item.lotrmod.silver_ingot": "Silver Ingot",
+
+  "entity.lotrmod.guild_guard": "Guild Guard"
 }
