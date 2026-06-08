@@ -223,7 +223,6 @@ public class GuildDebugCommand {
 
         BlockPos pos = player.blockPosition();
         Set<ChunkPos> chunks = ClaimBannerBlock.getClaimChunks(pos);
-        if (chunks == null) return fail(ctx, "Position is not within 2 blocks of a chunk corner intersection.");
 
         for (ChunkPos cp : chunks) {
             Guild owner = data.getChunkOwner(cp);
@@ -240,7 +239,7 @@ public class GuildDebugCommand {
         g.addBanner(pos, chunks);
         data.refreshChunkIndex(g);
         data.setDirty();
-        send(ctx, "Force-claimed 9 chunks for '" + g.name + "' at " + pos.toShortString() + ".");
+        send(ctx, "Force-claimed 81 chunks for '" + g.name + "' at " + pos.toShortString() + ".");
         return 1;
     }
 

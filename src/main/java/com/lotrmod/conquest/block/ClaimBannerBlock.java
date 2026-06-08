@@ -78,12 +78,6 @@ public class ClaimBannerBlock extends BaseEntityBlock {
             }
 
             Set<ChunkPos> chunks = getClaimChunks(pos);
-            if (chunks == null) {
-                level.removeBlock(pos, false);
-                player.sendSystemMessage(Component.literal(
-                    "[Conquest] Invalid placement — the banner base must be within 2 blocks of a chunk-corner intersection (where 4 chunks meet)."));
-                return;
-            }
 
             for (ChunkPos cp : chunks) {
                 Guild owner = data.getChunkOwner(cp);
@@ -103,7 +97,7 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 data.refreshChunkIndex(guild);
                 data.setDirty();
                 player.sendSystemMessage(Component.literal(
-                    "[Conquest] Claim banner placed! Claiming 9 chunks for " + guild.name + "."));
+                    "[Conquest] Claim banner placed! Claiming 81 chunks for " + guild.name + "."));
             }
         }
     }
@@ -142,28 +136,15 @@ public class ClaimBannerBlock extends BaseEntityBlock {
     }
 
     /**
-     * Returns the 3×3 ChunkPos set centred on the nearest chunk-corner intersection,
-     * or null if the pos is more than 2 blocks from any corner.
+     * Returns the 9×9 ChunkPos set (81 chunks) centred on the chunk containing pos.
      */
-    public static @Nullable Set<ChunkPos> getClaimChunks(BlockPos pos) {
-        // Chunk corners are at multiples of 16 in both X and Z
-        int nearestCornerX = (int) Math.round(pos.getX() / 16.0) * 16;
-        int nearestCornerZ = (int) Math.round(pos.getZ() / 16.0) * 16;
-
-        double dist = Math.sqrt(
-            Math.pow(pos.getX() - nearestCornerX, 2) +
-            Math.pow(pos.getZ() - nearestCornerZ, 2)
-        );
-        if (dist > 2.0) return null;
-
-        // The corner sits between chunkX-1 and chunkX (where chunkX = nearestCornerX >> 4)
-        int cornerChunkX = nearestCornerX >> 4;
-        int cornerChunkZ = nearestCornerZ >> 4;
-
+    public static Set<ChunkPos> getClaimChunks(BlockPos pos) {
+        int centerChunkX = pos.getX() >> 4;
+        int centerChunkZ = pos.getZ() >> 4;
         Set<ChunkPos> chunks = new HashSet<>();
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                chunks.add(new ChunkPos(cornerChunkX + dx, cornerChunkZ + dz));
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                chunks.add(new ChunkPos(centerChunkX + dx, centerChunkZ + dz));
             }
         }
         return chunks;
