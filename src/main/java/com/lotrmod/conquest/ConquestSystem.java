@@ -33,7 +33,7 @@ public class ConquestSystem {
         ConquestItems.register(modBus);
         ConquestEntities.register(modBus);
 
-        // Network
+        // Network (RegisterPayloadHandlersEvent)
         modBus.addListener(ConquestNetwork::register);
 
         // Entity attributes
@@ -50,7 +50,7 @@ public class ConquestSystem {
     }
 
     /** Called from RegisterCommandsEvent in LOTRMod. */
-    public static void registerCommands(net.minecraft.commands.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
+    public static void registerCommands(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
         GuildCommand.register(dispatcher);
         GuildDebugCommand.register(dispatcher);
     }

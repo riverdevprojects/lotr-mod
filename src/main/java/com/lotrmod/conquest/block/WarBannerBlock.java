@@ -12,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.util.MapCodec;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -26,8 +27,17 @@ import java.util.UUID;
 
 public class WarBannerBlock extends BaseEntityBlock {
 
+    public static final MapCodec<WarBannerBlock> CODEC = simpleCodec(WarBannerBlock::new);
+
+    @Override
+    public MapCodec<WarBannerBlock> codec() { return CODEC; }
+
+    public WarBannerBlock(BlockBehaviour.Properties props) {
+        super(props);
+    }
+
     public WarBannerBlock() {
-        super(BlockBehaviour.Properties.of()
+        this(BlockBehaviour.Properties.of()
             .strength(2.0f, 4.0f)
             .requiresCorrectToolForDrops());
     }
@@ -141,6 +151,6 @@ public class WarBannerBlock extends BaseEntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         if (level.isClientSide) return null;
         return createTickerHelper(type, ConquestBlockEntities.WAR_BANNER.get(),
-            WarBannerBlockEntity::serverTick);
+            (lvl, pos, st, be) -> WarBannerBlockEntity.serverTick((ServerLevel) lvl, pos, st, be));
     }
 }

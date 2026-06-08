@@ -12,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.util.MapCodec;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
@@ -28,8 +29,17 @@ import java.util.Set;
 
 public class ClaimBannerBlock extends BaseEntityBlock {
 
+    public static final MapCodec<ClaimBannerBlock> CODEC = simpleCodec(ClaimBannerBlock::new);
+
+    @Override
+    public MapCodec<ClaimBannerBlock> codec() { return CODEC; }
+
+    public ClaimBannerBlock(BlockBehaviour.Properties props) {
+        super(props);
+    }
+
     public ClaimBannerBlock() {
-        super(BlockBehaviour.Properties.of()
+        this(BlockBehaviour.Properties.of()
             .strength(3.5f, 6.0f)
             .requiresCorrectToolForDrops());
     }
@@ -128,7 +138,7 @@ public class ClaimBannerBlock extends BaseEntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         if (level.isClientSide) return null;
         return createTickerHelper(type, ConquestBlockEntities.CLAIM_BANNER.get(),
-            ClaimBannerBlockEntity::serverTick);
+            (lvl, pos, st, be) -> ClaimBannerBlockEntity.serverTick((ServerLevel) lvl, pos, st, be));
     }
 
     /**

@@ -16,7 +16,7 @@ public class ConquestBlocks {
 
     /** Claim banner: base block (has block entity, handles claiming logic). */
     public static final DeferredBlock<ClaimBannerBlock> CLAIM_BANNER_BASE =
-        BLOCKS.register("claim_banner_base", ClaimBannerBlock::new);
+        BLOCKS.register("claim_banner_base", () -> new ClaimBannerBlock());
 
     /** Claim banner: middle pole — placeholder block. */
     public static final DeferredBlock<Block> CLAIM_BANNER_POLE =
@@ -30,7 +30,7 @@ public class ConquestBlocks {
 
     /** War banner: placed in enemy territory to start a siege. */
     public static final DeferredBlock<WarBannerBlock> WAR_BANNER =
-        BLOCKS.register("war_banner", WarBannerBlock::new);
+        BLOCKS.register("war_banner", () -> new WarBannerBlock());
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
