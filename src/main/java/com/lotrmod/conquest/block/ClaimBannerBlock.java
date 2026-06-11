@@ -1,6 +1,7 @@
 package com.lotrmod.conquest.block;
 
 import com.lotrmod.conquest.ConquestConfig;
+import com.lotrmod.conquest.data.ConquestCosts;
 import com.lotrmod.conquest.data.Guild;
 import com.lotrmod.conquest.data.GuildSavedData;
 import com.lotrmod.conquest.registry.ConquestBlockEntities;
@@ -8,10 +9,13 @@ import com.lotrmod.conquest.registry.ConquestBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -24,12 +28,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.network.chat.Component;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class ClaimBannerBlock extends BaseEntityBlock {
 
     public static final MapCodec<ClaimBannerBlock> CODEC = simpleCodec(ClaimBannerBlock::new);
+
+    /** Transient: which outpost flag a player last opened the menu on, so menu commands know the target. */
+    public static final Map<UUID, BlockPos> OPEN_OUTPOST = new HashMap<>();
 
     @Override
     public MapCodec<ClaimBannerBlock> codec() { return CODEC; }
@@ -99,15 +109,27 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 }
             }
 
+            // Outpost/flag placement consumes guild treasury resources.
+            if (!guild.canAfford(ConquestCosts.FLAG_COST)) {
+                level.removeBlock(pos, false);
+                // Give the banner item back — the placement was rejected for lack of funds, not rules.
+                player.getInventory().placeItemBackInInventory(new ItemStack(this));
+                player.sendSystemMessage(Component.literal(
+                    "[Conquest] Your guild cannot afford this flag. Cost: 32 logs, 32 cobblestone, 8 iron, 4 gold."));
+                return;
+            }
+            guild.charge(ConquestCosts.FLAG_COST);
+
             // Valid — attach guild id to block entity and start auto-build
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ClaimBannerBlockEntity bannerBE) {
                 bannerBE.initialize(guild.id, chunks);
+                bannerBE.addInvested(ConquestCosts.FLAG_COST); // tracked for refund on abandon
                 guild.addBanner(pos, chunks);
                 data.refreshChunkIndex(guild);
                 data.setDirty();
                 player.sendSystemMessage(Component.literal(
-                    "[Conquest] Claim banner placed! Claiming 81 chunks for " + guild.name + "."));
+                    "[Conquest] Outpost founded! Claiming 81 chunks for " + guild.name + "."));
             }
         }
     }
@@ -135,6 +157,46 @@ public class ClaimBannerBlock extends BaseEntityBlock {
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (!(player instanceof ServerPlayer sp)) return InteractionResult.PASS;
+
+        GuildSavedData data = GuildSavedData.get(sp.getServer());
+        BlockEntity be = level.getBlockEntity(pos);
+        if (!(be instanceof ClaimBannerBlockEntity bannerBE) || bannerBE.guildId == null) return InteractionResult.PASS;
+        Guild guild = data.getGuild(bannerBE.guildId);
+        if (guild == null || !guild.isMember(sp.getUUID())) return InteractionResult.PASS;
+
+        OPEN_OUTPOST.put(sp.getUUID(), pos);
+        openOutpostMenu(sp, guild, bannerBE);
+        return InteractionResult.CONSUME;
+    }
+
+    /** Sends the clickable outpost menu (hire guards / abandon) to a member interacting with the flag. */
+    private static void openOutpostMenu(ServerPlayer player, Guild guild, ClaimBannerBlockEntity be) {
+        player.sendSystemMessage(Component.literal("[Outpost] === " + guild.name + " Outpost ==="));
+        player.sendSystemMessage(Component.literal("[Outpost] Guards: " + be.getGuardCount()
+            + " / " + ConquestCosts.MAX_GUARDS_PER_OUTPOST));
+        player.sendSystemMessage(Component.literal("[Outpost] Hire a guard: ")
+            .append(clickable("[" + ConquestCosts.GUARD_HIRE_GOLD + " Gold]",
+                net.minecraft.ChatFormatting.GOLD, "/guild outpost hire gold"))
+            .append(Component.literal("  "))
+            .append(clickable("[" + ConquestCosts.GUARD_HIRE_SILVER + " Silver]",
+                net.minecraft.ChatFormatting.AQUA, "/guild outpost hire silver")));
+        if (guild.canManage(player.getUUID())) {
+            player.sendSystemMessage(Component.literal("[Outpost] ")
+                .append(clickable("[Abandon Outpost]", net.minecraft.ChatFormatting.RED, "/guild outpost abandon")));
+        }
+    }
+
+    private static Component clickable(String label, net.minecraft.ChatFormatting color, String command) {
+        return Component.literal(label).withStyle(s -> s
+            .withColor(color)
+            .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, command)));
     }
 
     @Nullable

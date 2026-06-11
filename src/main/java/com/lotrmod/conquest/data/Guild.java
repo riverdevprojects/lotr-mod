@@ -101,6 +101,28 @@ public class Guild {
         return list;
     }
 
+    /** True if the treasury holds at least the given cost of every listed resource. */
+    public boolean canAfford(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            if (treasury.getOrDefault(e.getKey(), 0L) < e.getValue()) return false;
+        }
+        return true;
+    }
+
+    /** Deducts the given cost from the treasury (clamped at zero). */
+    public void charge(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            treasury.merge(e.getKey(), -e.getValue(), (a, b) -> Math.max(0, a + b));
+        }
+    }
+
+    /** Returns the given resources to the treasury. */
+    public void refund(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            treasury.merge(e.getKey(), e.getValue(), Long::sum);
+        }
+    }
+
     public boolean canAffordUpkeep() {
         int bracket = TreasuryResource.upkeepBracket(bannerCount());
         if (bracket == 0) return true;
