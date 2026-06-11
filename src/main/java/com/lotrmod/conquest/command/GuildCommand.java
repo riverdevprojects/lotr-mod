@@ -30,6 +30,9 @@ public class GuildCommand {
             .then(Commands.literal("invite")
                 .then(Commands.argument("player", EntityArgument.player())
                     .executes(ctx -> invite(ctx, EntityArgument.getPlayer(ctx, "player")))))
+            .then(Commands.literal("kick")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(ctx -> kick(ctx, EntityArgument.getPlayer(ctx, "player")))))
             .then(Commands.literal("join")
                 .then(Commands.argument("name", StringArgumentType.greedyString())
                     .executes(ctx -> join(ctx, StringArgumentType.getString(ctx, "name")))))
@@ -111,9 +114,39 @@ public class GuildCommand {
         if (data.getGuildForPlayer(target.getUUID()) != null) return fail(player, target.getName().getString() + " is already in a guild.");
 
         guild.pendingInvites.add(target.getUUID());
+        guild.kickedUUIDs.remove(target.getUUID()); // an invite lifts a prior kick bar
         data.setDirty();
         player.sendSystemMessage(msg("Invited " + target.getName().getString() + " to " + guild.name + "."));
         target.sendSystemMessage(msg("You have been invited to join '" + guild.name + "'! Type /guild join " + guild.name));
+        return 1;
+    }
+
+    // ── /guild kick ──────────────────────────────────────────────────────────
+
+    private static int kick(CommandContext<CommandSourceStack> ctx, ServerPlayer target) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        // Permission: only the master and officers may kick (enforced server-side).
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can kick members.");
+        if (!guild.isMember(target.getUUID())) return fail(player, target.getName().getString() + " is not in your guild.");
+        if (target.getUUID().equals(player.getUUID())) return fail(player, "You cannot kick yourself. Use /guild leave.");
+        // Immunity: the master and officers cannot be kicked by anyone.
+        if (guild.isMaster(target.getUUID())) return fail(player, "The Guild Master cannot be kicked.");
+        if (guild.isOfficer(target.getUUID())) return fail(player, "Officers cannot be kicked. Demote them first.");
+
+        guild.memberUUIDs.remove(target.getUUID());
+        guild.officerUUIDs.remove(target.getUUID());
+        guild.pendingInvites.remove(target.getUUID());
+        guild.kickedUUIDs.add(target.getUUID()); // barred until re-invited
+        data.refreshPlayerIndex(guild);
+        data.setDirty();
+        target.sendSystemMessage(msg("You were kicked from '" + guild.name + "'. You cannot rejoin unless invited."));
+        player.sendSystemMessage(msg("Kicked " + target.getName().getString() + " from " + guild.name + "."));
+        broadcastGuild(player.getServer(), guild, target.getName().getString() + " was kicked from the guild.", target.getUUID());
         return 1;
     }
 
@@ -128,6 +161,9 @@ public class GuildCommand {
 
         Guild guild = data.getGuildByName(name);
         if (guild == null) return fail(player, "No guild named '" + name + "' found.");
+
+        if (guild.kickedUUIDs.contains(player.getUUID()) && !guild.pendingInvites.contains(player.getUUID()))
+            return fail(player, "You were kicked from '" + guild.name + "' and cannot rejoin until an officer invites you.");
 
         if (guild.joinMode == JoinMode.INVITE_ONLY && !guild.pendingInvites.contains(player.getUUID()))
             return fail(player, "'" + guild.name + "' is invite-only.");

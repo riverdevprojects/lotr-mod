@@ -43,6 +43,9 @@ public class Guild {
     /** Pending invite UUIDs. */
     public final Set<UUID> pendingInvites = new HashSet<>();
 
+    /** Players who were kicked — barred from rejoining until re-invited. */
+    public final Set<UUID> kickedUUIDs = new HashSet<>();
+
     /** Block-placement dev score inside claimed chunks (approximates development tier). */
     public long developmentScore = 0L;
 
@@ -134,6 +137,7 @@ public class Guild {
         tag.put("officers", saveUUIDs(officerUUIDs));
         tag.put("members", saveUUIDs(memberUUIDs));
         tag.put("invites", saveUUIDs(pendingInvites));
+        tag.put("kicked", saveUUIDs(kickedUUIDs));
         tag.put("disbandVotes", saveUUIDs(disbandVotes));
 
         CompoundTag treas = new CompoundTag();
@@ -179,6 +183,7 @@ public class Guild {
         g.memberUUIDs.clear();
         loadUUIDs(tag.getList("members",      Tag.TAG_COMPOUND), g.memberUUIDs);
         loadUUIDs(tag.getList("invites",      Tag.TAG_COMPOUND), g.pendingInvites);
+        loadUUIDs(tag.getList("kicked",       Tag.TAG_COMPOUND), g.kickedUUIDs);
         loadUUIDs(tag.getList("disbandVotes", Tag.TAG_COMPOUND), g.disbandVotes);
 
         CompoundTag treas = tag.getCompound("treasury");

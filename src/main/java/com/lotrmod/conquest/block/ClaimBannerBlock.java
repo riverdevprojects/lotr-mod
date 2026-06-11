@@ -79,6 +79,16 @@ public class ClaimBannerBlock extends BaseEntityBlock {
 
             Set<ChunkPos> chunks = getClaimChunks(pos);
 
+            // The chunk the flag sits in must not already belong to this guild — that would
+            // mean stacking flags on already-claimed land. Each chunk is claimable once per guild.
+            ChunkPos centerChunk = new ChunkPos(pos);
+            Guild centerOwner = data.getChunkOwner(centerChunk);
+            if (centerOwner != null && centerOwner.id.equals(guild.id)) {
+                level.removeBlock(pos, false);
+                player.sendSystemMessage(Component.literal("[Conquest] This land is already claimed by your guild."));
+                return;
+            }
+
             for (ChunkPos cp : chunks) {
                 Guild owner = data.getChunkOwner(cp);
                 if (owner != null && !owner.id.equals(guild.id)) {
