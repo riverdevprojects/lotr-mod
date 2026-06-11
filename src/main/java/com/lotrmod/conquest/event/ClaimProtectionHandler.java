@@ -41,12 +41,10 @@ public class ClaimProtectionHandler {
 
         if (isFlag) {
             if (owner.isMember(sp.getUUID())) {
-                // A guild may never destroy its own flag by mining; only the master/officer
-                // may remove it (the sanctioned "abandon outpost" path). Regular members are blocked.
-                if (!owner.canManage(sp.getUUID())) {
-                    event.setCanceled(true);
-                    sendMessage(sp, "You cannot destroy your own guild's flag. Only the guild master or an officer can remove it.");
-                }
+                // A guild can never destroy its own flag by mining — not even the master/officer.
+                // The only sanctioned removal is the abandon action in the outpost menu.
+                event.setCanceled(true);
+                sendMessage(sp, "You cannot mine your own guild's flag. Use the outpost menu to abandon it.");
                 return;
             }
             // Non-member: an enemy flag is only mineable while at war with the owning guild.

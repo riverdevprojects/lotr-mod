@@ -87,26 +87,25 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 return;
             }
 
-            Set<ChunkPos> chunks = getClaimChunks(pos);
-
-            // The chunk the flag sits in must not already belong to this guild — that would
-            // mean stacking flags on already-claimed land. Each chunk is claimable once per guild.
+            // The chunk the flag sits in must be unclaimed: you can't plant inside your own land
+            // (flag stacking) or inside another guild's land.
             ChunkPos centerChunk = new ChunkPos(pos);
             Guild centerOwner = data.getChunkOwner(centerChunk);
-            if (centerOwner != null && centerOwner.id.equals(guild.id)) {
+            if (centerOwner != null) {
                 level.removeBlock(pos, false);
-                player.sendSystemMessage(Component.literal("[Conquest] This land is already claimed by your guild."));
+                player.getInventory().placeItemBackInInventory(new ItemStack(this));
+                player.sendSystemMessage(Component.literal(centerOwner.id.equals(guild.id)
+                    ? "[Conquest] This land is already claimed by your guild."
+                    : "[Conquest] This land is already claimed by '" + centerOwner.name + "'."));
                 return;
             }
 
-            for (ChunkPos cp : chunks) {
-                Guild owner = data.getChunkOwner(cp);
-                if (owner != null && !owner.id.equals(guild.id)) {
-                    level.removeBlock(pos, false);
-                    player.sendSystemMessage(Component.literal(
-                        "[Conquest] Cannot claim here — chunk " + cp.x + "," + cp.z + " is already claimed by '" + owner.name + "'."));
-                    return;
-                }
+            // Claim only the chunks of the 9x9 footprint that are still unowned. This keeps the
+            // "others can't claim" boundary identical to the "others can't build" (protection)
+            // boundary — both are exactly the set of chunks a guild actually owns.
+            Set<ChunkPos> chunks = new HashSet<>();
+            for (ChunkPos cp : getClaimChunks(pos)) {
+                if (data.getChunkOwner(cp) == null) chunks.add(cp);
             }
 
             // Outpost/flag placement consumes guild treasury resources.
@@ -129,7 +128,7 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 data.refreshChunkIndex(guild);
                 data.setDirty();
                 player.sendSystemMessage(Component.literal(
-                    "[Conquest] Outpost founded! Claiming 81 chunks for " + guild.name + "."));
+                    "[Conquest] Outpost founded! Claiming " + chunks.size() + " chunks for " + guild.name + "."));
             }
         }
     }
