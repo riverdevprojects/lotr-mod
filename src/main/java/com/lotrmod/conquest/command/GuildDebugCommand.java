@@ -273,10 +273,14 @@ public class GuildDebugCommand {
         Guild g2 = data.getGuildByName(name2);
         if (g1 == null) return fail(ctx, "Guild not found: " + name1);
         if (g2 == null) return fail(ctx, "Guild not found: " + name2);
+        // Admin override only. The player-facing way to end a war is the mutual peace
+        // treaty flow (/guild peace request|accept|decline), which both sides must agree to.
         g1.wars.remove(g2.id);
         g2.wars.remove(g1.id);
+        g1.peaceRequestsReceived.remove(g2.id);
+        g2.peaceRequestsReceived.remove(g1.id);
         data.setDirty();
-        send(ctx, "War between '" + g1.name + "' and '" + g2.name + "' forcibly ended.");
+        send(ctx, "War between '" + g1.name + "' and '" + g2.name + "' forcibly ended (admin override).");
         return 1;
     }
 

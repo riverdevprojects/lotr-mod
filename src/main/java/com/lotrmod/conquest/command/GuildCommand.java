@@ -63,6 +63,16 @@ public class GuildCommand {
                 .then(Commands.literal("declare")
                     .then(Commands.argument("guildname", StringArgumentType.greedyString())
                         .executes(ctx -> warDeclare(ctx, StringArgumentType.getString(ctx, "guildname"))))))
+            .then(Commands.literal("peace")
+                .then(Commands.literal("request")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceRequest(ctx, StringArgumentType.getString(ctx, "guildname")))))
+                .then(Commands.literal("accept")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceAccept(ctx, StringArgumentType.getString(ctx, "guildname")))))
+                .then(Commands.literal("decline")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceDecline(ctx, StringArgumentType.getString(ctx, "guildname"))))))
             .then(Commands.literal("treasury")
                 .then(Commands.literal("deposit")
                     .then(Commands.argument("resource", StringArgumentType.word())
@@ -458,6 +468,104 @@ public class GuildCommand {
         broadcastGuild(player.getServer(), guild, declMsg, null);
         broadcastGuild(player.getServer(), target, targetMsg, null);
         return 1;
+    }
+
+    // ── /guild peace ─────────────────────────────────────────────────────────
+
+    private static int peaceRequest(CommandContext<CommandSourceStack> ctx, String targetName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can request peace.");
+
+        Guild target = data.getGuildByName(targetName);
+        if (target == null) return fail(player, "No guild named '" + targetName + "' found.");
+        if (target.id.equals(guild.id)) return fail(player, "You cannot make peace with yourself.");
+        if (!guild.wars.containsKey(target.id)) return fail(player, "You are not at war with '" + target.name + "'.");
+
+        if (target.peaceRequestsReceived.contains(guild.id))
+            return fail(player, "A peace request to '" + target.name + "' is already pending.");
+
+        // If the other side already offered us peace, requesting back simply accepts theirs.
+        if (guild.peaceRequestsReceived.contains(target.id)) {
+            return finalizePeace(player.getServer(), data, guild, target);
+        }
+
+        target.peaceRequestsReceived.add(guild.id);
+        data.setDirty();
+        player.sendSystemMessage(msg("Peace request sent to '" + target.name + "'. Awaiting their response."));
+
+        Component prompt = Component.literal("[Guild] '" + guild.name + "' has requested PEACE. ")
+            .append(clickable("[Accept]", net.minecraft.ChatFormatting.GREEN, "/guild peace accept " + guild.name))
+            .append(Component.literal(" "))
+            .append(clickable("[Decline]", net.minecraft.ChatFormatting.RED, "/guild peace decline " + guild.name));
+        for (UUID uuid : target.memberUUIDs) {
+            ServerPlayer p = player.getServer().getPlayerList().getPlayer(uuid);
+            if (p != null && target.canManage(uuid)) p.sendSystemMessage(prompt);
+        }
+        return 1;
+    }
+
+    private static int peaceAccept(CommandContext<CommandSourceStack> ctx, String offererName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can accept peace.");
+
+        Guild offerer = data.getGuildByName(offererName);
+        if (offerer == null) return fail(player, "No guild named '" + offererName + "' found.");
+        if (!guild.peaceRequestsReceived.contains(offerer.id))
+            return fail(player, "'" + offerer.name + "' has not requested peace with you.");
+
+        return finalizePeace(player.getServer(), data, guild, offerer);
+    }
+
+    private static int peaceDecline(CommandContext<CommandSourceStack> ctx, String offererName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can decline peace.");
+
+        Guild offerer = data.getGuildByName(offererName);
+        if (offerer == null) return fail(player, "No guild named '" + offererName + "' found.");
+        if (!guild.peaceRequestsReceived.remove(offerer.id))
+            return fail(player, "'" + offerer.name + "' has no pending peace request with you.");
+        data.setDirty();
+
+        broadcastGuild(player.getServer(), guild, "Peace request from '" + offerer.name + "' was declined. The war continues.", null);
+        broadcastGuild(player.getServer(), offerer, "'" + guild.name + "' declined your peace request. The war continues.", null);
+        return 1;
+    }
+
+    /** Ends the war between the two guilds and clears any pending peace offers between them. */
+    private static int finalizePeace(net.minecraft.server.MinecraftServer server, GuildSavedData data, Guild a, Guild b) {
+        a.wars.remove(b.id);
+        b.wars.remove(a.id);
+        a.peaceRequestsReceived.remove(b.id);
+        b.peaceRequestsReceived.remove(a.id);
+        data.setDirty();
+
+        String announce = "☮ Peace! The war between '" + a.name + "' and '" + b.name + "' has ended.";
+        broadcastGuild(server, a, announce, null);
+        broadcastGuild(server, b, announce, null);
+        return 1;
+    }
+
+    /** Builds a clickable chat token that runs a command when clicked. */
+    private static Component clickable(String label, net.minecraft.ChatFormatting color, String command) {
+        return Component.literal(label).withStyle(style -> style
+            .withColor(color)
+            .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, command)));
     }
 
     // ── /guild treasury ──────────────────────────────────────────────────────

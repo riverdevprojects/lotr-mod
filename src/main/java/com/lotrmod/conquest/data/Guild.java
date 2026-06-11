@@ -46,6 +46,9 @@ public class Guild {
     /** Players who were kicked — barred from rejoining until re-invited. */
     public final Set<UUID> kickedUUIDs = new HashSet<>();
 
+    /** Guild ids that have offered us a peace treaty and are awaiting our accept/decline. */
+    public final Set<UUID> peaceRequestsReceived = new HashSet<>();
+
     /** Block-placement dev score inside claimed chunks (approximates development tier). */
     public long developmentScore = 0L;
 
@@ -138,6 +141,7 @@ public class Guild {
         tag.put("members", saveUUIDs(memberUUIDs));
         tag.put("invites", saveUUIDs(pendingInvites));
         tag.put("kicked", saveUUIDs(kickedUUIDs));
+        tag.put("peaceRequests", saveUUIDs(peaceRequestsReceived));
         tag.put("disbandVotes", saveUUIDs(disbandVotes));
 
         CompoundTag treas = new CompoundTag();
@@ -184,6 +188,7 @@ public class Guild {
         loadUUIDs(tag.getList("members",      Tag.TAG_COMPOUND), g.memberUUIDs);
         loadUUIDs(tag.getList("invites",      Tag.TAG_COMPOUND), g.pendingInvites);
         loadUUIDs(tag.getList("kicked",       Tag.TAG_COMPOUND), g.kickedUUIDs);
+        loadUUIDs(tag.getList("peaceRequests",Tag.TAG_COMPOUND), g.peaceRequestsReceived);
         loadUUIDs(tag.getList("disbandVotes", Tag.TAG_COMPOUND), g.disbandVotes);
 
         CompoundTag treas = tag.getCompound("treasury");
