@@ -58,6 +58,11 @@ public class ClaimProtectionHandler {
             } else {
                 // Attacking an enemy flag during war is hostile — rouse the defenders.
                 aggroNearbyGuards(sl, sp, pos);
+                // Destroying the base captures the land: mark it so a captured flag is auto-planted.
+                if (event.getState().is(ConquestBlocks.CLAIM_BANNER_BASE.get())
+                    && sl.getBlockEntity(pos) instanceof com.lotrmod.conquest.block.ClaimBannerBlockEntity be) {
+                    be.capturedBy = breakerGuild.id;
+                }
             }
             return;
         }

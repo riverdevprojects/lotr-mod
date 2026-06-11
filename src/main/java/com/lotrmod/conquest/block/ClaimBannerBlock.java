@@ -154,9 +154,50 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 if (level.getBlockState(pos.above(2)).is(ConquestBlocks.CLAIM_BANNER_TOP.get())) {
                     level.removeBlock(pos.above(2), false);
                 }
+                // War capture: if an enemy destroyed this flag, auto-plant a captured flag for them.
+                if (bannerBE.capturedBy != null) {
+                    plantCapturedFlag((ServerLevel) level, pos, bannerBE.capturedBy,
+                        new HashSet<>(bannerBE.claimedChunks), guild != null ? guild.name : "the enemy");
+                }
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+
+    /**
+     * Plants a captured flag for the attacking guild over the freed claim, consuming no resources.
+     * Deferred one tick so it runs after the destroyed flag has been fully removed.
+     */
+    private static void plantCapturedFlag(ServerLevel level, BlockPos pos, UUID attackerId,
+                                          Set<ChunkPos> capturedChunks, String defenderName) {
+        level.getServer().execute(() -> {
+            GuildSavedData data = GuildSavedData.get(level.getServer());
+            Guild attacker = data.getGuild(attackerId);
+            if (attacker == null) return;
+
+            // Only take chunks that are now unclaimed (freed by the destroyed flag).
+            Set<ChunkPos> claimable = new HashSet<>();
+            for (ChunkPos cp : capturedChunks) {
+                if (data.getChunkOwner(cp) == null) claimable.add(cp);
+            }
+            if (claimable.isEmpty()) return;
+
+            level.setBlock(pos, ConquestBlocks.CLAIM_BANNER_BASE.get().defaultBlockState(), 3);
+            if (level.getBlockEntity(pos) instanceof ClaimBannerBlockEntity newBe) {
+                newBe.initialize(attacker.id, claimable); // free capture — no resources invested
+            }
+            attacker.addBanner(pos, claimable);
+            data.refreshChunkIndex(attacker);
+            data.setDirty();
+
+            Component msg = Component.literal("[Conquest] Your guild captured " + claimable.size()
+                + " chunks from '" + defenderName + "'! A captured flag now flies at "
+                + pos.getX() + "," + pos.getY() + "," + pos.getZ() + ".");
+            for (UUID uuid : attacker.memberUUIDs) {
+                ServerPlayer p = level.getServer().getPlayerList().getPlayer(uuid);
+                if (p != null) p.sendSystemMessage(msg);
+            }
+        });
     }
 
     @Override

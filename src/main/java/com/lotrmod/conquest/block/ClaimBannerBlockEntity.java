@@ -31,6 +31,9 @@ public class ClaimBannerBlockEntity extends BlockEntity {
     public UUID guildId = null;
     public Set<ChunkPos> claimedChunks = new HashSet<>();
 
+    /** Transient: the guild that just destroyed this flag in war, to auto-plant a captured flag. */
+    public UUID capturedBy = null;
+
     private boolean fullyBuilt = false;
     private int buildTick = 0;
 
