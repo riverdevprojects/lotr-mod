@@ -5,6 +5,7 @@ import com.lotrmod.conquest.command.GuildDebugCommand;
 import com.lotrmod.conquest.entity.FakePlayerEntity;
 import com.lotrmod.conquest.entity.GuardEntity;
 import com.lotrmod.conquest.event.ClaimProtectionHandler;
+import com.lotrmod.conquest.event.GuildChatHandler;
 import com.lotrmod.conquest.event.UpkeepHandler;
 import com.lotrmod.conquest.event.WarHandler;
 import com.lotrmod.conquest.network.ConquestNetwork;
@@ -44,6 +45,7 @@ public class ConquestSystem {
         NeoForge.EVENT_BUS.register(new ClaimProtectionHandler());
         NeoForge.EVENT_BUS.register(new UpkeepHandler());
         NeoForge.EVENT_BUS.register(new WarHandler());
+        NeoForge.EVENT_BUS.register(new GuildChatHandler());
     }
 
     private static void registerEntityAttributes(EntityAttributeCreationEvent event) {

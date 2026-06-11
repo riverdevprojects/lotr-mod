@@ -47,6 +47,9 @@ public class GuildCommand {
             .then(Commands.literal("setjoin")
                 .then(Commands.argument("mode", StringArgumentType.word())
                     .executes(ctx -> setJoin(ctx, StringArgumentType.getString(ctx, "mode")))))
+            .then(Commands.literal("chat")
+                .then(Commands.argument("message", StringArgumentType.greedyString())
+                    .executes(ctx -> guildChat(ctx, StringArgumentType.getString(ctx, "message")))))
             .then(Commands.literal("info")
                 .executes(GuildCommand::info))
             .then(Commands.literal("ui")
@@ -74,6 +77,11 @@ public class GuildCommand {
                                 StringArgumentType.getString(ctx, "resource"),
                                 LongArgumentType.getLong(ctx, "amount")))))))
         );
+
+        // Short alias for guild chat: /gc <message>
+        dispatcher.register(Commands.literal("gc")
+            .then(Commands.argument("message", StringArgumentType.greedyString())
+                .executes(ctx -> guildChat(ctx, StringArgumentType.getString(ctx, "message")))));
     }
 
     // ── /guild create ────────────────────────────────────────────────────────
@@ -253,6 +261,29 @@ public class GuildCommand {
         data.setDirty();
         player.sendSystemMessage(msg("Join mode set to " + jm.name().toLowerCase(Locale.ROOT) + "."));
         return 1;
+    }
+
+    // ── /guild chat | /gc ──────────────────────────────────────────────────
+
+    private static int guildChat(CommandContext<CommandSourceStack> ctx, String message) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        sendGuildChat(player, guild, message);
+        return 1;
+    }
+
+    /** Broadcasts a guild-chat line to every online member of the guild (and the sender). */
+    public static void sendGuildChat(ServerPlayer sender, Guild guild, String message) {
+        message = message.trim();
+        if (message.isEmpty()) return;
+        Component line = Component.literal("[Guild Chat] " + sender.getName().getString() + ": " + message);
+        for (UUID uuid : guild.memberUUIDs) {
+            ServerPlayer p = sender.getServer().getPlayerList().getPlayer(uuid);
+            if (p != null) p.sendSystemMessage(line);
+        }
     }
 
     // ── /guild info ──────────────────────────────────────────────────────────
