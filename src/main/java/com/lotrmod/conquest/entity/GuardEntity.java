@@ -4,9 +4,16 @@ import com.lotrmod.conquest.data.Guild;
 import com.lotrmod.conquest.data.GuildSavedData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Equipable;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
@@ -179,6 +186,88 @@ public class GuardEntity extends Monster {
     /** Called by ClaimProtectionHandler to trigger aggro on a specific player. */
     public void aggroOn(Player player) {
         this.setTarget(player);
+    }
+
+    /**
+     * Equipment system (#10): a member of the owning guild right-clicks the guard with an armor
+     * piece or weapon to equip it (swapping out any current piece), or sneak + empty hand to
+     * recover all gear. Worn equipment renders on the guard and its attribute modifiers (armor,
+     * attack damage) apply automatically.
+     */
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        if (level().isClientSide) return InteractionResult.SUCCESS;
+        if (!(player instanceof ServerPlayer sp)) return InteractionResult.PASS;
+
+        // Only members of the owning guild may equip this guard.
+        if (guildId == null) return InteractionResult.PASS;
+        Guild owner = GuildSavedData.get(sp.getServer()).getGuild(guildId);
+        if (owner == null || !owner.isMember(sp.getUUID())) {
+            sp.sendSystemMessage(Component.literal("[Guild] This guard isn't yours to equip."));
+            return InteractionResult.CONSUME;
+        }
+
+        ItemStack held = player.getItemInHand(hand);
+        if (held.isEmpty()) {
+            if (player.isShiftKeyDown()) {
+                returnAllGear(sp);
+            } else {
+                sendLoadout(sp);
+            }
+            return InteractionResult.CONSUME;
+        }
+
+        EquipmentSlot slot = slotForItem(held);
+        ItemStack current = getItemBySlot(slot);
+        ItemStack toEquip = held.copy();
+        toEquip.setCount(1);
+        setItemSlot(slot, toEquip);
+        setDropChance(slot, 0.0f); // gear is guild property — not dropped randomly on death
+        held.shrink(1);
+        if (!current.isEmpty() && !player.addItem(current)) {
+            player.drop(current, false);
+        }
+        sp.sendSystemMessage(Component.literal("[Guild] Equipped " + toEquip.getHoverName().getString()
+            + " on the guard (" + slot.getName() + ")."));
+        return InteractionResult.CONSUME;
+    }
+
+    private static EquipmentSlot slotForItem(ItemStack stack) {
+        Equipable eq = Equipable.get(stack);
+        if (eq != null) {
+            EquipmentSlot s = eq.getEquipmentSlot();
+            if (s == EquipmentSlot.HEAD || s == EquipmentSlot.CHEST
+                || s == EquipmentSlot.LEGS || s == EquipmentSlot.FEET) {
+                return s;
+            }
+        }
+        return EquipmentSlot.MAINHAND;
+    }
+
+    private void returnAllGear(ServerPlayer player) {
+        boolean any = false;
+        for (EquipmentSlot s : EquipmentSlot.values()) {
+            ItemStack st = getItemBySlot(s);
+            if (!st.isEmpty()) {
+                any = true;
+                ItemStack copy = st.copy();
+                if (!player.addItem(copy)) player.drop(copy, false);
+                setItemSlot(s, ItemStack.EMPTY);
+            }
+        }
+        player.sendSystemMessage(Component.literal(any
+            ? "[Guild] Recovered all of the guard's gear."
+            : "[Guild] This guard has no gear equipped."));
+    }
+
+    private void sendLoadout(ServerPlayer player) {
+        player.sendSystemMessage(Component.literal("[Guild] Guard loadout (right-click with gear to equip, sneak + empty hand to recover):"));
+        for (EquipmentSlot s : new EquipmentSlot[]{
+                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND}) {
+            ItemStack st = getItemBySlot(s);
+            String name = st.isEmpty() ? "(empty)" : st.getHoverName().getString();
+            player.sendSystemMessage(Component.literal("  " + s.getName() + ": " + name));
+        }
     }
 
     @Override

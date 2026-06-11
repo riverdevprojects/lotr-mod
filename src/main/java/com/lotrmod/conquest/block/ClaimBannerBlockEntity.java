@@ -145,6 +145,7 @@ public class ClaimBannerBlockEntity extends BlockEntity {
         if (guard == null) return null;
         guard.setGuildId(guildId);
         guard.setHomePos(pos);
+        guard.setPersistenceRequired(); // don't despawn — guards (and their gear) are guild property
         BlockPos spawn = findSafeSpawn(level, pos);
         guard.moveTo(spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0, 0);
         level.addFreshEntity(guard);
