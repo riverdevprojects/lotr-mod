@@ -40,7 +40,7 @@ public record C2SOutpostActionPacket(BlockPos pos, String action) implements Cus
     public static void handle(C2SOutpostActionPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            String result;
+            String result = "Unknown action.";
             boolean abandoned = false;
             switch (pkt.action()) {
                 case "HIRE_GOLD"   -> result = OutpostActions.hire(player, pkt.pos(), TreasuryResource.GOLD);
