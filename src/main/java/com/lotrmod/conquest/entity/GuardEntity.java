@@ -62,7 +62,19 @@ public class GuardEntity extends Monster {
         // Auto-aggro players at war with the owning guild who are inside its territory.
         targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Player.class, true,
             this::canAutoAggro));
-        targetSelector.addGoal(2, new HurtByTargetGoal(this));
+        // Guards of guilds at war attack each other on sight (enables holding a captured flag).
+        targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, GuardEntity.class, true,
+            this::isEnemyGuard));
+        targetSelector.addGoal(3, new HurtByTargetGoal(this));
+    }
+
+    /** A guard belonging to a guild that is at war with this guard's guild. */
+    private boolean isEnemyGuard(LivingEntity entity) {
+        if (!(entity instanceof GuardEntity other)) return false;
+        if (guildId == null || other.getGuildId() == null || guildId.equals(other.getGuildId())) return false;
+        if (!(level() instanceof ServerLevel sl)) return false;
+        Guild ownerGuild = GuildSavedData.get(sl.getServer()).getGuild(guildId);
+        return ownerGuild != null && ownerGuild.wars.containsKey(other.getGuildId());
     }
 
     /** Acquisition rule: a war enemy inside the owning guild's territory and within the pursuit budget. */
