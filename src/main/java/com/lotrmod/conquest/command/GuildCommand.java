@@ -5,8 +5,11 @@ import com.lotrmod.conquest.block.ClaimBannerBlock;
 import com.lotrmod.conquest.block.ClaimBannerBlockEntity;
 import com.lotrmod.conquest.data.*;
 import com.lotrmod.conquest.network.S2CGuildDataPacket;
+import com.lotrmod.conquest.registry.ConquestItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -678,10 +681,47 @@ public class GuildCommand {
         TreasuryResource res = parseResource(player, resource);
         if (res == null) return 0;
 
-        guild.treasury.merge(res, amount, Long::sum);
+        Item item = depositItem(res);
+        if (item == null) return fail(player, res.displayName() + " cannot be deposited as an item.");
+        int have = countItem(player, item);
+        int toDeposit = (int) Math.min(amount, have);
+        if (toDeposit <= 0) return fail(player, "You have no " + res.displayName() + " to deposit.");
+
+        removeItems(player, item, toDeposit);
+        guild.treasury.merge(res, (long) toDeposit, Long::sum);
         data.setDirty();
-        player.sendSystemMessage(msg("Deposited " + amount + " " + res.displayName() + " into the treasury. (Note: no item check in V1 — honour system.)"));
+        player.sendSystemMessage(msg("Deposited " + toDeposit + " " + res.displayName() + " into the treasury."));
         return 1;
+    }
+
+    private static Item depositItem(TreasuryResource res) {
+        if (res == TreasuryResource.SILVER) return ConquestItems.SILVER_INGOT.get();
+        return res.vanillaItem();
+    }
+
+    private static int countItem(ServerPlayer player, Item item) {
+        int n = 0;
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack st = inv.getItem(i);
+            if (st.is(item)) n += st.getCount();
+        }
+        return n;
+    }
+
+    private static void removeItems(ServerPlayer player, Item item, int count) {
+        var inv = player.getInventory();
+        int remaining = count;
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            ItemStack st = inv.getItem(i);
+            if (st.is(item)) {
+                int take = Math.min(remaining, st.getCount());
+                st.shrink(take);
+                remaining -= take;
+            }
+        }
+        inv.setChanged();
+        player.inventoryMenu.broadcastChanges();
     }
 
     private static int treasuryWithdraw(CommandContext<CommandSourceStack> ctx, String resource, long amount) {

@@ -21,6 +21,10 @@ public class ConquestItems {
         ITEMS.register("war_banner", () ->
             new BlockItem(ConquestBlocks.WAR_BANNER.get(), new Item.Properties()));
 
+    public static final DeferredItem<BlockItem> GUILD_STONE =
+        ITEMS.register("guild_stone", () ->
+            new BlockItem(ConquestBlocks.GUILD_STONE.get(), new Item.Properties()));
+
     /**
      * Stub silver ingot. Flagged for worldgen integration later — no ore is registered here.
      * Treasury and upkeep reference this item; actual worldgen ore can be added separately.

@@ -2,6 +2,7 @@ package com.lotrmod.conquest.registry;
 
 import com.lotrmod.LOTRMod;
 import com.lotrmod.conquest.block.ClaimBannerBlock;
+import com.lotrmod.conquest.block.GuildStoneBlock;
 import com.lotrmod.conquest.block.WarBannerBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -31,6 +32,10 @@ public class ConquestBlocks {
     /** War banner: placed in enemy territory to start a siege. */
     public static final DeferredBlock<WarBannerBlock> WAR_BANNER =
         BLOCKS.register("war_banner", () -> new WarBannerBlock());
+
+    /** Guild stone: craftable in-world access point to the guild menu. */
+    public static final DeferredBlock<GuildStoneBlock> GUILD_STONE =
+        BLOCKS.register("guild_stone", () -> new GuildStoneBlock());
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
