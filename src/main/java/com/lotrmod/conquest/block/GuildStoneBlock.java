@@ -5,7 +5,6 @@ import com.lotrmod.conquest.command.GuildCommand;
 import com.lotrmod.conquest.data.Guild;
 import com.lotrmod.conquest.data.GuildSavedData;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -52,35 +51,9 @@ public class GuildStoneBlock extends Block {
             return InteractionResult.CONSUME;
         }
 
-        // Open the guild info screen (reuses the existing client screen).
+        // Open the guild screen. Masters/officers see in-screen deposit buttons (driven by the
+        // canManage flag in the packet) — no chat menu.
         PacketDistributor.sendToPlayer(sp, GuildCommand.buildPacket(guild, data, sp));
-
-        // Guild master / officers get deposit options.
-        if (guild.canManage(sp.getUUID())) {
-            sp.sendSystemMessage(Component.literal("[Guild] Deposit everything you carry into the treasury:"));
-            Component row1 = Component.literal("[Guild] ")
-                .append(depositButton("Bread", "bread"))
-                .append(Component.literal(" "))
-                .append(depositButton("Cobblestone", "cobblestone"))
-                .append(Component.literal(" "))
-                .append(depositButton("Logs", "logs"));
-            Component row2 = Component.literal("[Guild] ")
-                .append(depositButton("Gold", "gold"))
-                .append(Component.literal(" "))
-                .append(depositButton("Iron", "iron"))
-                .append(Component.literal(" "))
-                .append(depositButton("Silver", "silver"));
-            sp.sendSystemMessage(row1);
-            sp.sendSystemMessage(row2);
-        }
         return InteractionResult.CONSUME;
-    }
-
-    private static Component depositButton(String label, String resource) {
-        // 2147483647 = deposit all the player has (the command clamps to inventory contents).
-        return Component.literal("[+ " + label + "]").withStyle(s -> s
-            .withColor(net.minecraft.ChatFormatting.GREEN)
-            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                "/guild treasury deposit " + resource + " 2147483647")));
     }
 }

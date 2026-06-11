@@ -380,7 +380,8 @@ public class GuildCommand {
             guild.treasury.getOrDefault(TreasuryResource.IRON, 0L),
             guild.treasury.getOrDefault(TreasuryResource.SILVER, 0L),
             wars,
-            data.onlineDay()
+            data.onlineDay(),
+            guild.canManage(viewer.getUUID())
         );
     }
 
@@ -622,17 +623,25 @@ public class GuildCommand {
         TreasuryResource res = parseResource(player, resource);
         if (res == null) return 0;
 
+        player.sendSystemMessage(msg(depositResource(player, res, amount)));
+        return 1;
+    }
+
+    /** Item-based deposit shared by the command and the guild screen. Returns a result line. */
+    public static String depositResource(ServerPlayer player, TreasuryResource res, long max) {
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = data.getGuildForPlayer(player.getUUID());
+        if (guild == null) return "You are not in a guild.";
         Item item = depositItem(res);
-        if (item == null) return fail(player, res.displayName() + " cannot be deposited as an item.");
+        if (item == null) return res.displayName() + " cannot be deposited as an item.";
         int have = countItem(player, item);
-        int toDeposit = (int) Math.min(amount, have);
-        if (toDeposit <= 0) return fail(player, "You have no " + res.displayName() + " to deposit.");
+        int toDeposit = (int) Math.min(max, have);
+        if (toDeposit <= 0) return "You have no " + res.displayName() + " to deposit.";
 
         removeItems(player, item, toDeposit);
         guild.treasury.merge(res, (long) toDeposit, Long::sum);
         data.setDirty();
-        player.sendSystemMessage(msg("Deposited " + toDeposit + " " + res.displayName() + " into the treasury."));
-        return 1;
+        return "Deposited " + toDeposit + " " + res.displayName() + " into the treasury.";
     }
 
     private static Item depositItem(TreasuryResource res) {

@@ -26,5 +26,9 @@ public class ConquestNetwork {
         // Outpost action (C2S)
         registrar.playToServer(C2SOutpostActionPacket.TYPE,
             C2SOutpostActionPacket.STREAM_CODEC, C2SOutpostActionPacket::handle);
+
+        // Guild screen action (C2S)
+        registrar.playToServer(C2SGuildActionPacket.TYPE,
+            C2SGuildActionPacket.STREAM_CODEC, C2SGuildActionPacket::handle);
     }
 }
