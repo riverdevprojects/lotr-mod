@@ -3,6 +3,7 @@ package com.lotrmod.conquest.command;
 import com.lotrmod.conquest.ConquestConfig;
 import com.lotrmod.conquest.block.ClaimBannerBlock;
 import com.lotrmod.conquest.block.ClaimBannerBlockEntity;
+import com.lotrmod.conquest.block.OutpostActions;
 import com.lotrmod.conquest.data.*;
 import com.lotrmod.conquest.network.S2CGuildDataPacket;
 import com.lotrmod.conquest.registry.ConquestItems;
@@ -582,90 +583,30 @@ public class GuildCommand {
     }
 
     // ── /guild outpost (hire guards / abandon) ───────────────────────────────
+    // Text fallbacks for the outpost GUI; both delegate to the shared OutpostActions,
+    // operating on the flag the player last opened (right-clicked).
 
     private static int outpostHire(CommandContext<CommandSourceStack> ctx, String currency) {
         ServerPlayer player = playerOrFail(ctx);
         if (player == null) return 0;
-        GuildSavedData data = GuildSavedData.get(player.getServer());
-        Guild guild = requireGuild(player, data);
-        if (guild == null) return 0;
-
         TreasuryResource cur;
         if (currency.equalsIgnoreCase("gold")) cur = TreasuryResource.GOLD;
         else if (currency.equalsIgnoreCase("silver")) cur = TreasuryResource.SILVER;
         else return fail(player, "Choose a currency: gold or silver.");
 
-        ClaimBannerBlockEntity be = resolveOpenOutpost(player, guild);
-        if (be == null) return 0;
-        if (be.getGuardCount() >= ConquestCosts.MAX_GUARDS_PER_OUTPOST)
-            return fail(player, "This outpost already has the maximum of " + ConquestCosts.MAX_GUARDS_PER_OUTPOST + " guards.");
-
-        Map<TreasuryResource, Long> cost = ConquestCosts.guardHireCost(cur);
-        long amount = cost.get(cur);
-        if (!guild.canAfford(cost))
-            return fail(player, "Your guild needs " + amount + " " + cur.displayName() + " to hire a guard.");
-
-        guild.charge(cost);
-        if (!be.hireGuard(player.serverLevel())) {
-            guild.refund(cost); // spawn failed — don't take the resources
-            return fail(player, "Could not hire a guard right now.");
-        }
-        be.addInvested(cost);
-        data.setDirty();
-        player.sendSystemMessage(msg("Hired a guard for " + amount + " " + cur.displayName()
-            + ". Garrison: " + be.getGuardCount() + "/" + ConquestCosts.MAX_GUARDS_PER_OUTPOST + "."));
+        BlockPos pos = ClaimBannerBlock.OPEN_OUTPOST.get(player.getUUID());
+        if (pos == null) return fail(player, "Right-click your outpost flag first.");
+        player.sendSystemMessage(msg(OutpostActions.hire(player, pos, cur)));
         return 1;
     }
 
     private static int outpostAbandon(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer player = playerOrFail(ctx);
         if (player == null) return 0;
-        GuildSavedData data = GuildSavedData.get(player.getServer());
-        Guild guild = requireGuild(player, data);
-        if (guild == null) return 0;
-        // Abandonment requires GM/officer approval to prevent griefing.
-        if (!guild.canManage(player.getUUID()))
-            return fail(player, "Only the guild master or an officer can abandon an outpost.");
-
-        ClaimBannerBlockEntity be = resolveOpenOutpost(player, guild);
-        if (be == null) return 0;
-
-        ServerLevel level = player.serverLevel();
-        BlockPos pos = be.getBlockPos();
-        Map<TreasuryResource, Long> refund = be.getInvested();
-
-        be.despawnGuards(level);
-        guild.refund(refund);
-        ClaimBannerBlock.OPEN_OUTPOST.remove(player.getUUID());
-        // Removing the banner fires onRemove → unclaims chunks and clears the pole/top.
-        level.removeBlock(pos, false);
-        data.setDirty();
-
-        String refundStr = refund.isEmpty() ? "nothing" : refund.entrySet().stream()
-            .map(e -> e.getValue() + " " + e.getKey().displayName())
-            .collect(Collectors.joining(", "));
-        broadcastGuild(player.getServer(), guild,
-            player.getName().getString() + " abandoned an outpost. Refunded to treasury: " + refundStr + ".", null);
-        return 1;
-    }
-
-    /** Resolves the outpost the player last opened, validating it still exists and belongs to their guild. */
-    private static ClaimBannerBlockEntity resolveOpenOutpost(ServerPlayer player, Guild guild) {
         BlockPos pos = ClaimBannerBlock.OPEN_OUTPOST.get(player.getUUID());
-        if (pos == null) {
-            fail(player, "Right-click your outpost flag first to open its menu.");
-            return null;
-        }
-        if (!(player.serverLevel().getBlockEntity(pos) instanceof ClaimBannerBlockEntity be) || be.guildId == null) {
-            ClaimBannerBlock.OPEN_OUTPOST.remove(player.getUUID());
-            fail(player, "That outpost no longer exists.");
-            return null;
-        }
-        if (!be.guildId.equals(guild.id)) {
-            fail(player, "That outpost doesn't belong to your guild.");
-            return null;
-        }
-        return be;
+        if (pos == null) return fail(player, "Right-click your outpost flag first.");
+        player.sendSystemMessage(msg(OutpostActions.abandon(player, pos)));
+        return 1;
     }
 
     // ── /guild treasury ──────────────────────────────────────────────────────

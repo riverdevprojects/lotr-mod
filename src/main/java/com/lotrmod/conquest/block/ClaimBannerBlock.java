@@ -210,33 +210,11 @@ public class ClaimBannerBlock extends BaseEntityBlock {
         Guild guild = data.getGuild(bannerBE.guildId);
         if (guild == null || !guild.isMember(sp.getUUID())) return InteractionResult.PASS;
 
-        OPEN_OUTPOST.put(sp.getUUID(), pos);
-        openOutpostMenu(sp, guild, bannerBE);
+        // Open the real outpost GUI (hire guards / abandon).
+        OPEN_OUTPOST.put(sp.getUUID(), pos); // also lets the /guild outpost commands target this flag
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(sp,
+            com.lotrmod.conquest.network.S2COutpostScreenPacket.build(pos, bannerBE, guild, guild.canManage(sp.getUUID())));
         return InteractionResult.CONSUME;
-    }
-
-    /** Sends the clickable outpost menu (hire guards / abandon) to a member interacting with the flag. */
-    private static void openOutpostMenu(ServerPlayer player, Guild guild, ClaimBannerBlockEntity be) {
-        player.sendSystemMessage(Component.literal("[Outpost] === " + guild.name + " Outpost ==="));
-        player.sendSystemMessage(Component.literal("[Outpost] Guards: " + be.getGuardCount()
-            + " / " + ConquestCosts.MAX_GUARDS_PER_OUTPOST));
-        player.sendSystemMessage(Component.literal("[Outpost] Hire a guard: ")
-            .append(clickable("[" + ConquestCosts.GUARD_HIRE_GOLD + " Gold]",
-                net.minecraft.ChatFormatting.GOLD, "/guild outpost hire gold"))
-            .append(Component.literal("  "))
-            .append(clickable("[" + ConquestCosts.GUARD_HIRE_SILVER + " Silver]",
-                net.minecraft.ChatFormatting.AQUA, "/guild outpost hire silver")));
-        if (guild.canManage(player.getUUID())) {
-            player.sendSystemMessage(Component.literal("[Outpost] ")
-                .append(clickable("[Abandon Outpost]", net.minecraft.ChatFormatting.RED, "/guild outpost abandon")));
-        }
-    }
-
-    private static Component clickable(String label, net.minecraft.ChatFormatting color, String command) {
-        return Component.literal(label).withStyle(s -> s
-            .withColor(color)
-            .withClickEvent(new net.minecraft.network.chat.ClickEvent(
-                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, command)));
     }
 
     @Nullable

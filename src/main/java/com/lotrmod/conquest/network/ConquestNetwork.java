@@ -18,5 +18,13 @@ public class ConquestNetwork {
         // Fake player action (C2S)
         registrar.playToServer(C2SFakePlayerActionPacket.TYPE,
             C2SFakePlayerActionPacket.STREAM_CODEC, C2SFakePlayerActionPacket::handle);
+
+        // Outpost management screen (S2C)
+        registrar.playToClient(S2COutpostScreenPacket.TYPE,
+            S2COutpostScreenPacket.STREAM_CODEC, S2COutpostScreenPacket::handle);
+
+        // Outpost action (C2S)
+        registrar.playToServer(C2SOutpostActionPacket.TYPE,
+            C2SOutpostActionPacket.STREAM_CODEC, C2SOutpostActionPacket::handle);
     }
 }
