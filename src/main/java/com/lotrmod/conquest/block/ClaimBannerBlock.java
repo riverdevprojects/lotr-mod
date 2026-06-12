@@ -87,26 +87,16 @@ public class ClaimBannerBlock extends BaseEntityBlock {
                 return;
             }
 
-            // The chunk the flag sits in must be unclaimed: you can't plant inside your own land
-            // (flag stacking) or inside another guild's land.
-            ChunkPos centerChunk = new ChunkPos(pos);
-            Guild centerOwner = data.getChunkOwner(centerChunk);
-            if (centerOwner != null) {
+            // Validate the claim footprint (rejects overlap with our own land, enemy land at the
+            // flag itself, etc.) and figure out which chunks we can actually take.
+            ClaimCheck check = checkClaim(data, guild, pos);
+            if (check.error() != null) {
                 level.removeBlock(pos, false);
                 player.getInventory().placeItemBackInInventory(new ItemStack(this));
-                player.sendSystemMessage(Component.literal(centerOwner.id.equals(guild.id)
-                    ? "[Conquest] This land is already claimed by your guild."
-                    : "[Conquest] This land is already claimed by '" + centerOwner.name + "'."));
+                player.sendSystemMessage(Component.literal("[Conquest] " + check.error()));
                 return;
             }
-
-            // Claim only the chunks of the 9x9 footprint that are still unowned. This keeps the
-            // "others can't claim" boundary identical to the "others can't build" (protection)
-            // boundary — both are exactly the set of chunks a guild actually owns.
-            Set<ChunkPos> chunks = new HashSet<>();
-            for (ChunkPos cp : getClaimChunks(pos)) {
-                if (data.getChunkOwner(cp) == null) chunks.add(cp);
-            }
+            Set<ChunkPos> chunks = check.claimable();
 
             // Outpost/flag placement consumes guild treasury resources.
             if (!guild.canAfford(ConquestCosts.FLAG_COST)) {
@@ -238,5 +228,39 @@ public class ClaimBannerBlock extends BaseEntityBlock {
             }
         }
         return chunks;
+    }
+
+    /** Result of validating a flag placement: the chunks it may claim, or an error reason. */
+    public record ClaimCheck(@Nullable Set<ChunkPos> claimable, @Nullable String error) {}
+
+    /**
+     * Validates a flag placement for {@code guild} at {@code pos} and returns the chunks it may claim.
+     *
+     * Rules:
+     *  - The footprint may never overlap the guild's OWN existing claims — this stops two outposts
+     *    of the same guild being placed next to each other (they must be spaced ≥ a full footprint apart).
+     *  - The flag itself may not be planted inside another guild's land.
+     *  - Chunks already owned by OTHER guilds (away from the centre) are simply skipped, so the
+     *    "others can't claim" boundary equals the "others can't build" protection boundary.
+     */
+    public static ClaimCheck checkClaim(GuildSavedData data, Guild guild, BlockPos pos) {
+        ChunkPos center = new ChunkPos(pos);
+        Set<ChunkPos> claimable = new HashSet<>();
+        for (ChunkPos cp : getClaimChunks(pos)) {
+            Guild owner = data.getChunkOwner(cp);
+            if (owner == null) {
+                claimable.add(cp);
+            } else if (owner.id.equals(guild.id)) {
+                return new ClaimCheck(null,
+                    "Too close to one of your guild's outposts — spread them out.");
+            } else if (cp.equals(center)) {
+                return new ClaimCheck(null, "This land is already claimed by '" + owner.name + "'.");
+            }
+            // else: another guild's chunk away from the centre — skip it (partial claim).
+        }
+        if (claimable.isEmpty()) {
+            return new ClaimCheck(null, "There is no unclaimed land here.");
+        }
+        return new ClaimCheck(claimable, null);
     }
 }

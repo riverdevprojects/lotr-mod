@@ -222,13 +222,12 @@ public class GuildDebugCommand {
         if (g == null) return fail(ctx, "Guild not found: " + guildName);
 
         BlockPos pos = player.blockPosition();
-        Set<ChunkPos> chunks = ClaimBannerBlock.getClaimChunks(pos);
 
-        for (ChunkPos cp : chunks) {
-            Guild owner = data.getChunkOwner(cp);
-            if (owner != null && !owner.id.equals(g.id))
-                return fail(ctx, "Chunk " + cp.x + "," + cp.z + " already claimed by '" + owner.name + "'.");
-        }
+        // Same validation as real flag placement: no overlap with the guild's own claims
+        // (so outposts can't be stacked next to each other), partial-claim around other guilds.
+        ClaimBannerBlock.ClaimCheck check = ClaimBannerBlock.checkClaim(data, g, pos);
+        if (check.error() != null) return fail(ctx, check.error());
+        Set<ChunkPos> chunks = check.claimable();
 
         // Place the claim banner block and register
         ServerLevel level = player.serverLevel();
@@ -239,7 +238,7 @@ public class GuildDebugCommand {
         g.addBanner(pos, chunks);
         data.refreshChunkIndex(g);
         data.setDirty();
-        send(ctx, "Force-claimed 81 chunks for '" + g.name + "' at " + pos.toShortString() + ".");
+        send(ctx, "Force-claimed " + chunks.size() + " chunks for '" + g.name + "' at " + pos.toShortString() + ".");
         return 1;
     }
 
