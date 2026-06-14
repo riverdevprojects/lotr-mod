@@ -12,27 +12,24 @@ import net.minecraft.world.level.block.state.properties.StairsShape;
 /**
  * Procedural generator for Orthanc — the black tower of Isengard.
  *
- * <p>Orthanc is built as four great pillars of black stone, fused together for most of
- * their height and splitting near the summit into four sharp horns, with a flat pinnacle
- * platform between them (where the palantír once sat). The shaft tapers as it rises and is
- * covered in vertical fluting; a battered talus skirts the base, an overhanging cornice
- * crowns the shaft, and crenellated horns claw at the sky.
+ * <p>Modelled on the Weta statue: not a square box but <em>four separate pillars</em>
+ * clustered around a hollow central stair-shaft, fused near the core and separated on the
+ * four cardinal faces by deep vertical clefts. Each pillar is covered in fine vertical
+ * fluting and ringed by protruding horizontal string-courses; the whole mass tapers as it
+ * climbs and, at the summit, the four pillars flare into a crenellated crown and split into
+ * four clawed horns around a small pinnacle platform (where the palantír once sat).
  *
- * <p>The whole thing is generated cell-by-cell from a small set of geometry rules so that
- * it can be raised anywhere in the world with a single command. Every stair used —
- * the talus skirt, the cornice eave, the internal spiral stair and the horn barbs — is
- * placed with an explicit, deliberately-chosen {@code facing} so the geometry reads
- * correctly from the ground.
+ * <p>Geometry is generated cell-by-cell from a handful of rules so the tower can be raised
+ * anywhere with one command.
  *
  * <h2>Stair facing convention (important!)</h2>
- * In Minecraft a stair's {@code facing} is the direction of its <em>full-height</em> side;
- * you climb a bottom stair <em>toward</em> its facing. We rely on this throughout:
+ * A stair's {@code facing} is the direction of its <em>full-height</em> side; you climb a
+ * bottom stair <em>toward</em> its facing. We rely on this everywhere:
  * <ul>
- *   <li>Talus skirt — bottom stairs facing <em>inward</em> (toward the tower) so the slope
- *       rises from the ground up to the wall: a battered fortress base.</li>
- *   <li>Cornice eave — top-half stairs facing <em>inward</em> so the overhang juts out and
- *       slopes back up under the parapet.</li>
- *   <li>Spiral stair — each step faces the direction of travel (= the direction you ascend).</li>
+ *   <li>Talus skirt — bottom stairs facing <em>inward</em> so the slope leans up against the
+ *       wall: a battered fortress base.</li>
+ *   <li>Spiral stair — every step faces its direction of travel (= the way you ascend).</li>
+ *   <li>Horn barbs — bottom stairs facing <em>outward</em> so the claw juts from the tip.</li>
  * </ul>
  */
 public final class OrthancBuilder {
@@ -40,28 +37,24 @@ public final class OrthancBuilder {
     private OrthancBuilder() {}
 
     // ── Geometry ────────────────────────────────────────────────────────────────
-    /** Half-width (Chebyshev radius) of the shaft at its foot. */
-    static final int R_BASE = 11;
-    /** Half-width of the shaft where it meets the pinnacle. */
-    static final int R_TOP = 6;
+    /** Pillar-centre offset from the axis (the four pillars sit at (±c, ±c)). */
+    static final int C_BASE = 6, C_TOP = 3;
+    /** Pillar half-size. */
+    static final int P_BASE = 4, P_TOP = 2;
+    /** Central hollow stair-shaft: outer Chebyshev radius and wall thickness. */
+    static final int CORE_OUT = 4, CORE_WT = 2;
     /** Height of the fused shaft (y = 0 .. SHAFT_H). */
-    public static final int SHAFT_H = 96;
-    /** Height of the four horns above the shaft. */
-    public static final int HORN_H = 40;
-    /** How far below the foot the foundation is sunk. */
-    static final int FOUNDATION_D = 6;
-    /** Spacing of the vertical fluting ribs around the shaft. */
+    public static final int SHAFT_H = 112;
+    /** Height of the crown + horns above the shaft. */
+    public static final int HORN_H = 34;
+    /** Spacing of protruding horizontal string-courses. */
+    static final int TIER_STEP = 12;
+    /** Spacing of the vertical fluting ribs on each pillar. */
     static final int RIB_STEP = 3;
-    /** Vertical spacing of window slits. */
-    static final int WINDOW_STEP = 16;
-    /** Chebyshev radius of the internal spiral stair path (wraps the central column). */
-    static final int SPIRAL_R = 3;
-
-    // ── Classification codes for a shaft cell ───────────────────────────────────
-    private static final int NONE = 0;
-    private static final int WALL = 1;
-    private static final int RIB = 2;
-    private static final int CORNER = 3;
+    /** Depth the stepped foundation is sunk below the foot. */
+    static final int FOUNDATION_D = 6;
+    /** Chebyshev radius of the internal spiral stair path. */
+    static final int SPIRAL_R = 2;
 
     /**
      * Raise Orthanc with its foot centred on {@code origin}.
@@ -70,134 +63,141 @@ public final class OrthancBuilder {
      */
     public static int build(ServerLevel level, BlockPos origin) {
         int placed = 0;
-        final int ox = origin.getX();
-        final int oy = origin.getY();
-        final int oz = origin.getZ();
-        final int maxBuild = level.getMaxBuildHeight() - 1;
-        final int reach = R_BASE + 4; // horizontal clearing/footprint radius
+        placed += buildFoundation(level, origin);
+        placed += buildShaft(level, origin);
+        placed += buildCentralColumn(level, origin);
+        placed += buildSpiralStair(level, origin);
+        placed += buildCleftLights(level, origin);
+        placed += buildCrownAndHorns(level, origin);
+        placed += buildPinnacle(level, origin);
+        placed += buildTalus(level, origin);
+        placed += buildDoorway(level, origin);
+        return placed;
+    }
 
-        // ── Foundation: a solid stepped plinth sunk into the ground ─────────────
+    // ── Foundation ──────────────────────────────────────────────────────────────
+
+    private static int buildFoundation(ServerLevel level, BlockPos origin) {
+        int placed = 0;
         for (int y = -FOUNDATION_D; y < 0; y++) {
-            int fr = R_BASE + 2 - (y + FOUNDATION_D); // wider at the very bottom, stepping in as it rises
-            fr = Math.max(R_BASE, Math.min(R_BASE + 2, fr));
+            int fr = (C_BASE + P_BASE) - (y + FOUNDATION_D); // widest at the very bottom
+            fr = Math.max(C_BASE + P_BASE - 1, Math.min(C_BASE + P_BASE + 1, fr));
             for (int dx = -fr; dx <= fr; dx++) {
                 for (int dz = -fr; dz <= fr; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) > fr) continue;
-                    if (set(level, ox + dx, oy + y, oz + dz, foundationPalette(ox + dx, oy + y, oz + dz))) placed++;
+                    if (set(level, origin.getX() + dx, origin.getY() + y, origin.getZ() + dz,
+                            foundationPalette(origin.getX() + dx, origin.getY() + y, origin.getZ() + dz))) placed++;
                 }
             }
         }
+        return placed;
+    }
 
-        // ── Shaft: tapering, fluted, four-cornered body ─────────────────────────
+    // ── Shaft: four fluted pillars + hollow core + deep clefts + string-courses ──
+
+    private static int buildShaft(ServerLevel level, BlockPos origin) {
+        int placed = 0;
+        final int maxBuild = level.getMaxBuildHeight() - 1;
+        final int reach = C_BASE + P_BASE + 2;
+
         for (int y = 0; y <= SHAFT_H; y++) {
-            int wy = oy + y;
+            int wy = origin.getY() + y;
             if (wy > maxBuild) break;
-            int r = radiusAt(y);
+            double t = y / (double) SHAFT_H;
+            int c = lerp(C_BASE, C_TOP, t);
+            int p = lerp(P_BASE, P_TOP, t);
+            boolean band = (y % TIER_STEP) < 2 && y > 2 && y < SHAFT_H - 2;
+            int pEff = band ? p + 1 : p;
+
             for (int dx = -reach; dx <= reach; dx++) {
                 for (int dz = -reach; dz <= reach; dz++) {
-                    int code = classify(dx, dz, r);
-                    if (code != NONE) {
-                        BlockState state = (code == WALL)
-                                ? wallPalette(ox + dx, wy, oz + dz)
-                                : pillarPalette(ox + dx, wy, oz + dz);
-                        if (set(level, ox + dx, wy, oz + dz, state)) placed++;
-                    } else if (Math.max(Math.abs(dx), Math.abs(dz)) <= r + 1) {
-                        // carve the interior / silhouette clean of any intruding terrain
-                        if (setAir(level, ox + dx, wy, oz + dz)) placed++;
+                    int cheb = Math.max(Math.abs(dx), Math.abs(dz));
+                    if (pillarSolid(dx, dz, c, pEff, band)) {
+                        BlockState s = band
+                                ? bandPalette(origin.getX() + dx, wy, origin.getZ() + dz)
+                                : pillarPalette(origin.getX() + dx, wy, origin.getZ() + dz);
+                        if (set(level, origin.getX() + dx, wy, origin.getZ() + dz, s)) placed++;
+                    } else if (cheb <= CORE_OUT && cheb > CORE_OUT - CORE_WT) {
+                        // central shaft wall
+                        if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
+                                wallPalette(origin.getX() + dx, wy, origin.getZ() + dz))) placed++;
+                    } else if (cheb <= c + p + 1) {
+                        // interior shaft + open clefts: clear of any intruding terrain
+                        if (setAir(level, origin.getX() + dx, wy, origin.getZ() + dz)) placed++;
                     }
                 }
             }
         }
-
-        // ── Central column (spiral stair core + structural spine) ───────────────
-        for (int y = 0; y <= SHAFT_H; y++) {
-            int wy = oy + y;
-            if (wy > maxBuild) break;
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int dz = -2; dz <= 2; dz++) {
-                    if (set(level, ox + dx, wy, oz + dz, pillarPalette(ox + dx, wy, oz + dz))) placed++;
-                }
-            }
-        }
-
-        placed += buildSpiralStair(level, origin, maxBuild);
-        placed += buildFloors(level, origin, maxBuild);
-        placed += buildHorns(level, origin, maxBuild);
-        placed += buildPinnacle(level, origin, maxBuild);
-        placed += buildTalus(level, origin);
-        placed += buildCornice(level, origin, maxBuild);
-        placed += buildWindows(level, origin, maxBuild);
-        placed += buildDoorway(level, origin);
-
         return placed;
     }
 
-    // ── Shaft cell classification ───────────────────────────────────────────────
-
-    /** Half-width of the shaft at height {@code y}, tapering linearly. */
-    private static int radiusAt(int y) {
-        double t = y / (double) SHAFT_H;
-        return (int) Math.round(R_BASE + (R_TOP - R_BASE) * t);
-    }
-
     /**
-     * Decide what a cell at offset (dx,dz) is, given the shaft half-width {@code r}.
-     * Produces a 2-thick fluted ring with four robust corner pillars and proud ribs.
+     * Is (dx,dz) part of one of the four pillars? Pillars are solid; their exposed outer
+     * faces are fluted (every {@link #RIB_STEP} a rib stands proud, the rest recess by one),
+     * except on string-course bands where the full, un-fluted profile is used.
      */
-    private static int classify(int dx, int dz, int r) {
-        int adx = Math.abs(dx);
-        int adz = Math.abs(dz);
-        int cheb = Math.max(adx, adz);
-
-        // Corner pillars: thickened blocks at the four diagonal corners, proud by one.
-        boolean nearCorner = adx >= r - 1 && adz >= r - 1;
-        if (nearCorner && cheb <= r + 1) return CORNER;
-
-        // Two-block-thick wall ring.
-        if (cheb == r || cheb == r - 1) return WALL;
-
-        // Vertical fluting: ribs standing one block proud of the wall, every RIB_STEP.
-        if (cheb == r + 1) {
-            if (adx > adz) {
-                if (Math.floorMod(dz, RIB_STEP) == 0) return RIB;
-            } else if (adz > adx) {
-                if (Math.floorMod(dx, RIB_STEP) == 0) return RIB;
+    private static boolean pillarSolid(int dx, int dz, int c, int p, boolean band) {
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sz = -1; sz <= 1; sz += 2) {
+                int lx = Math.abs(dx - sx * c);
+                int lz = Math.abs(dz - sz * c);
+                if (lx > p || lz > p) continue;
+                if (band) return true;                 // full profile on string-courses
+                boolean bx = lx == p, bz = lz == p;
+                if (!bx && !bz) return true;            // pillar interior
+                if (bx && bz) return true;              // pillar arris (corner edge)
+                if (bx && Math.floorMod(dz, RIB_STEP) == 0) return true; // rib on x-face
+                if (bz && Math.floorMod(dx, RIB_STEP) == 0) return true; // rib on z-face
+                // otherwise this is a recessed flute on this pillar; another pillar may
+                // still cover the cell, so keep checking.
             }
         }
-        return NONE;
+        return false;
+    }
+
+    // ── Central column (spine for the spiral) ───────────────────────────────────
+
+    private static int buildCentralColumn(ServerLevel level, BlockPos origin) {
+        int placed = 0;
+        final int maxBuild = level.getMaxBuildHeight() - 1;
+        for (int y = 0; y <= SHAFT_H; y++) {
+            int wy = origin.getY() + y;
+            if (wy > maxBuild) break;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) > 1) continue;
+                    if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
+                            pillarPalette(origin.getX() + dx, wy, origin.getZ() + dz))) placed++;
+                }
+            }
+        }
+        return placed;
     }
 
     // ── Internal spiral staircase ───────────────────────────────────────────────
 
-    /**
-     * A continuous square-helix stair wrapping the central column. Each step faces the
-     * direction of travel, so you genuinely climb it the right way round.
-     */
-    private static int buildSpiralStair(ServerLevel level, BlockPos origin, int maxBuild) {
+    private static int buildSpiralStair(ServerLevel level, BlockPos origin) {
         int placed = 0;
+        final int maxBuild = level.getMaxBuildHeight() - 1;
         final int s = SPIRAL_R;
         final int top = SHAFT_H - 4;
         int y = 1;
 
         outer:
         while (y < top) {
-            // North side, travelling west → east (facing EAST).
-            for (int x = -s; x <= s; x++) {
+            for (int x = -s; x <= s; x++) {                  // north side, → east
                 placed += step(level, origin, x, y, -s, Direction.EAST, maxBuild);
                 if (++y >= top) break outer;
             }
-            // East side, travelling north → south (facing SOUTH).
-            for (int z = -s + 1; z <= s; z++) {
+            for (int z = -s + 1; z <= s; z++) {              // east side, → south
                 placed += step(level, origin, s, y, z, Direction.SOUTH, maxBuild);
                 if (++y >= top) break outer;
             }
-            // South side, travelling east → west (facing WEST).
-            for (int x = s - 1; x >= -s; x--) {
+            for (int x = s - 1; x >= -s; x--) {              // south side, → west
                 placed += step(level, origin, x, y, s, Direction.WEST, maxBuild);
                 if (++y >= top) break outer;
             }
-            // West side, travelling south → north (facing NORTH).
-            for (int z = s - 1; z >= -s + 1; z--) {
+            for (int z = s - 1; z >= -s + 1; z--) {          // west side, → north
                 placed += step(level, origin, -s, y, z, Direction.NORTH, maxBuild);
                 if (++y >= top) break outer;
             }
@@ -205,65 +205,73 @@ public final class OrthancBuilder {
         return placed;
     }
 
-    /** Place one spiral step (a stair facing its travel direction) plus its support. */
     private static int step(ServerLevel level, BlockPos origin, int dx, int y, int dz, Direction travel, int maxBuild) {
         int wy = origin.getY() + y;
         if (wy > maxBuild) return 0;
         int placed = 0;
         if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
                 stair(Blocks.POLISHED_BLACKSTONE_STAIRS, travel, Half.BOTTOM))) placed++;
-        // Solid tread support directly beneath each step.
         if (set(level, origin.getX() + dx, wy - 1, origin.getZ() + dz,
                 Blocks.POLISHED_BLACKSTONE.defaultBlockState())) placed++;
         return placed;
     }
 
-    // ── Interior floors / landings ──────────────────────────────────────────────
+    // ── Glowing clefts ──────────────────────────────────────────────────────────
 
-    private static int buildFloors(ServerLevel level, BlockPos origin, int maxBuild) {
+    /** Soul-lanterns recessed in the deep cardinal clefts, glowing up the four channels. */
+    private static int buildCleftLights(ServerLevel level, BlockPos origin) {
         int placed = 0;
-        for (int y = 24; y < SHAFT_H; y += 24) {
+        final int maxBuild = level.getMaxBuildHeight() - 1;
+        int d = CORE_OUT + 1;
+        for (int y = 8; y < SHAFT_H - 8; y += 8) {
             int wy = origin.getY() + y;
-            if (wy > maxBuild) break;
-            int r = radiusAt(y);
-            for (int dx = -r; dx <= r; dx++) {
-                for (int dz = -r; dz <= r; dz++) {
-                    if (Math.max(Math.abs(dx), Math.abs(dz)) > r - 1) continue;
-                    // Leave the spiral shaft open and the central column intact.
-                    if (Math.max(Math.abs(dx), Math.abs(dz)) <= SPIRAL_R) continue;
-                    if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
-                            Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState())) placed++;
-                }
-            }
+            if (wy > maxBuild) continue;
+            placed += lantern(level, origin, d, wy, 0);
+            placed += lantern(level, origin, -d, wy, 0);
+            placed += lantern(level, origin, 0, wy, d);
+            placed += lantern(level, origin, 0, wy, -d);
         }
         return placed;
     }
 
-    // ── Horns ───────────────────────────────────────────────────────────────────
+    private static int lantern(ServerLevel level, BlockPos origin, int dx, int wy, int dz) {
+        return set(level, origin.getX() + dx, wy, origin.getZ() + dz, Blocks.SOUL_LANTERN.defaultBlockState()) ? 1 : 0;
+    }
 
-    /** The four sharp horns: tapering pillars that splay outward as they rise to a point. */
-    private static int buildHorns(ServerLevel level, BlockPos origin, int maxBuild) {
+    // ── Crown + horns ───────────────────────────────────────────────────────────
+
+    /**
+     * The summit: the four pillars flare into a crenellated crown (the chunky, jagged base)
+     * and taper into four horns that splay outward and curl to sharp, barbed points.
+     */
+    private static int buildCrownAndHorns(ServerLevel level, BlockPos origin) {
         int placed = 0;
+        final int maxBuild = level.getMaxBuildHeight() - 1;
+
         for (int hy = 0; hy <= HORN_H; hy++) {
-            int y = SHAFT_H + hy;
-            int wy = origin.getY() + y;
+            int wy = origin.getY() + SHAFT_H + hy;
             if (wy > maxBuild) break;
             double t = hy / (double) HORN_H;
-            int hs = (int) Math.round(2 * (1 - t));               // half-size 2 → 0
-            int lean = (int) Math.round(6 * Math.pow(t, 1.3));    // splay outward near the top
-            int base = R_TOP + lean;
+            int hs = lerp(3, 0, t);                                 // crown 7-wide → 1-wide tip
+            int lean = (int) Math.round(8 * Math.pow(t, 1.4));      // splay outward, curling up
+            int base = C_TOP + lean;
 
             for (int sx = -1; sx <= 1; sx += 2) {
                 for (int sz = -1; sz <= 1; sz += 2) {
-                    int cx = sx * base;
-                    int cz = sz * base;
+                    int cx = sx * base, cz = sz * base;
                     for (int dx = cx - hs; dx <= cx + hs; dx++) {
                         for (int dz = cz - hs; dz <= cz + hs; dz++) {
                             if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
                                     pillarPalette(origin.getX() + dx, wy, origin.getZ() + dz))) placed++;
                         }
                     }
-                    // A claw-like barb on the outer face, two below the tip.
+                    // Jagged teeth on the crown base: raise the outer corner of each lump.
+                    if (hy <= 2) {
+                        int tx = cx + sx * hs, tz = cz + sz * hs;
+                        if (set(level, origin.getX() + tx, wy + 1, origin.getZ() + tz,
+                                pillarPalette(origin.getX() + tx, wy + 1, origin.getZ() + tz))) placed++;
+                    }
+                    // Claw barb jutting from the outer face, two short of the tip.
                     if (hy == HORN_H - 2) {
                         Direction out = (Math.abs(cx) >= Math.abs(cz))
                                 ? (sx > 0 ? Direction.EAST : Direction.WEST)
@@ -281,38 +289,34 @@ public final class OrthancBuilder {
 
     // ── Pinnacle platform ───────────────────────────────────────────────────────
 
-    /** The flat summit between the horns: floor, crenellated parapet and central dais. */
-    private static int buildPinnacle(ServerLevel level, BlockPos origin, int maxBuild) {
+    private static int buildPinnacle(ServerLevel level, BlockPos origin) {
         int placed = 0;
+        final int maxBuild = level.getMaxBuildHeight() - 1;
         int wy = origin.getY() + SHAFT_H;
         if (wy > maxBuild) return 0;
-        int r = R_TOP;
+        int r = CORE_OUT;
 
+        // Floor + crenellated parapet between the four horn-roots.
         for (int dx = -r; dx <= r; dx++) {
             for (int dz = -r; dz <= r; dz++) {
                 int cheb = Math.max(Math.abs(dx), Math.abs(dz));
                 if (cheb > r) continue;
                 if (cheb == r) {
-                    // Crenellated parapet: merlons every other block, raised one higher.
                     if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
                             Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState())) placed++;
-                    if (Math.floorMod(dx + dz, 2) == 0 && wy + 1 <= maxBuild) {
-                        if (set(level, origin.getX() + dx, wy + 1, origin.getZ() + dz,
-                                Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState())) placed++;
-                    }
-                } else {
-                    // Floor.
-                    if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
-                            Blocks.POLISHED_BLACKSTONE.defaultBlockState())) placed++;
+                    if (Math.floorMod(dx + dz, 2) == 0 && wy + 1 <= maxBuild
+                            && set(level, origin.getX() + dx, wy + 1, origin.getZ() + dz,
+                            Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState())) placed++;
+                } else if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
+                        Blocks.POLISHED_BLACKSTONE.defaultBlockState())) {
+                    placed++;
                 }
             }
         }
-
         // Central dais — the seat of the palantír.
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                if (set(level, origin.getX() + dx, wy + 1, origin.getZ() + dz,
-                        Blocks.OBSIDIAN.defaultBlockState())) placed++;
+                if (set(level, origin.getX() + dx, wy + 1, origin.getZ() + dz, Blocks.OBSIDIAN.defaultBlockState())) placed++;
             }
         }
         if (set(level, origin.getX(), wy + 2, origin.getZ(), Blocks.CRYING_OBSIDIAN.defaultBlockState())) placed++;
@@ -321,19 +325,16 @@ public final class OrthancBuilder {
 
     // ── Battered base (talus) ───────────────────────────────────────────────────
 
-    /** A skirt of stairs around the foot, facing inward so the slope leans against the wall. */
     private static int buildTalus(ServerLevel level, BlockPos origin) {
         int placed = 0;
-        int r = R_BASE + 1; // one ring outside the foot of the shaft
+        int r = C_BASE + P_BASE + 1;
         for (int dx = -r; dx <= r; dx++) {
             for (int dz = -r; dz <= r; dz++) {
-                int cheb = Math.max(Math.abs(dx), Math.abs(dz));
-                if (cheb != r) continue;
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
                 Direction inward = inwardFace(dx, dz);
-                if (inward == null) continue; // skip exact diagonal corners
+                if (inward == null) continue;
                 if (set(level, origin.getX() + dx, origin.getY(), origin.getZ() + dz,
                         stair(Blocks.POLISHED_BLACKSTONE_BRICK_STAIRS, inward, Half.BOTTOM))) placed++;
-                // Solid support beneath the skirt so it never floats over the terrain.
                 if (set(level, origin.getX() + dx, origin.getY() - 1, origin.getZ() + dz,
                         Blocks.BLACKSTONE.defaultBlockState())) placed++;
             }
@@ -341,88 +342,36 @@ public final class OrthancBuilder {
         return placed;
     }
 
-    // ── Overhanging cornice ─────────────────────────────────────────────────────
-
-    /** An eave of upside-down stairs just below the pinnacle, facing inward to overhang. */
-    private static int buildCornice(ServerLevel level, BlockPos origin, int maxBuild) {
-        int placed = 0;
-        int wy = origin.getY() + SHAFT_H - 1;
-        if (wy > maxBuild) return 0;
-        int r = R_TOP + 1;
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dz = -r; dz <= r; dz++) {
-                int cheb = Math.max(Math.abs(dx), Math.abs(dz));
-                if (cheb != r) continue;
-                Direction inward = inwardFace(dx, dz);
-                if (inward == null) continue;
-                if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
-                        stair(Blocks.POLISHED_BLACKSTONE_STAIRS, inward, Half.TOP))) placed++;
-            }
-        }
-        return placed;
-    }
-
-    // ── Glowing window slits ────────────────────────────────────────────────────
-
-    /** Narrow window slits on each face, lit from within with a soul lantern. */
-    private static int buildWindows(ServerLevel level, BlockPos origin, int maxBuild) {
-        int placed = 0;
-        for (int y = WINDOW_STEP; y < SHAFT_H - 6; y += WINDOW_STEP) {
-            int r = radiusAt(y);
-            for (int h = 0; h < 3; h++) {
-                int wy = origin.getY() + y + h;
-                if (wy > maxBuild) continue;
-                // +Z and -Z faces (slit offset to x=±1 to sit between ribs),
-                // +X and -X faces (offset to z=±1). dx/dz = 0 is a rib column, so avoid it.
-                placed += windowCell(level, origin, 1, wy, r, 0, 1);
-                placed += windowCell(level, origin, -1, wy, -r, 0, -1);
-                placed += windowCell(level, origin, r, wy, 1, 1, 0);
-                placed += windowCell(level, origin, -r, wy, -1, -1, 0);
-            }
-        }
-        return placed;
-    }
-
-    /** Carve a single window cell: dark glass on the outer face, soul lantern set behind it. */
-    private static int windowCell(ServerLevel level, BlockPos origin, int dx, int wy, int dz, int nx, int nz) {
-        int placed = 0;
-        if (set(level, origin.getX() + dx, wy, origin.getZ() + dz, Blocks.BLACK_STAINED_GLASS.defaultBlockState())) placed++;
-        // One block inward (opposite the outward normal): the lantern.
-        if (set(level, origin.getX() + dx - nx, wy, origin.getZ() + dz - nz, Blocks.SOUL_LANTERN.defaultBlockState())) placed++;
-        return placed;
-    }
-
     // ── Great doors ─────────────────────────────────────────────────────────────
 
-    /** A tall arched gateway through the south face, framed in chiselled and gilded stone. */
+    /** A tall arched gateway through the south cleft into the central stair-shaft. */
     private static int buildDoorway(ServerLevel level, BlockPos origin) {
         int placed = 0;
-        int r = radiusAt(0); // foot half-width
-        // The south wall sits around dz = +r (.. r+1 ribs). Punch an opening and frame it.
-        for (int dz = r - 1; dz <= r + 1; dz++) {
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int y = 0; y <= 6; y++) {
-                    boolean opening = Math.abs(dx) <= 1 && (y <= 4 || (y == 5 && dx == 0));
-                    int wx = origin.getX() + dx;
-                    int wy = origin.getY() + y;
-                    int wz = origin.getZ() + dz;
-                    if (opening) {
-                        if (setAir(level, wx, wy, wz)) placed++;
-                    } else if (Math.abs(dx) == 2 || y == 6 || (y == 5 && Math.abs(dx) == 1)) {
-                        // Frame: chiselled jambs and lintel with gilded keystone.
-                        BlockState frame = (y >= 5 && dx == 0)
-                                ? Blocks.GILDED_BLACKSTONE.defaultBlockState()
-                                : Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState();
-                        if (dz == r) { // only frame the visible outer skin
-                            if (set(level, wx, wy, wz, frame)) placed++;
-                        }
-                    }
+        int zOuter = C_BASE + P_BASE; // mouth of the south cleft
+        // Punch the passage from the cleft, through the core wall, to the shaft.
+        for (int dz = CORE_OUT - CORE_WT; dz <= zOuter; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int y = 0; y <= 5; y++) {
+                    boolean opening = !(y == 5 && Math.abs(dx) == 1); // pointed arch top
+                    if (opening && setAir(level, origin.getX() + dx, origin.getY() + y, origin.getZ() + dz)) placed++;
                 }
             }
         }
-        // A short threshold step out of the door.
+        // Frame the mouth on the core wall (chiselled jambs, gilded keystone).
+        int zf = CORE_OUT;
+        for (int y = 0; y <= 6; y++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                boolean frame = Math.abs(dx) == 2 || y == 6 || (y == 5 && Math.abs(dx) == 1);
+                if (!frame) continue;
+                BlockState b = (y >= 5 && dx == 0)
+                        ? Blocks.GILDED_BLACKSTONE.defaultBlockState()
+                        : Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState();
+                if (set(level, origin.getX() + dx, origin.getY() + y, origin.getZ() + zf, b)) placed++;
+            }
+        }
+        // Threshold step out of the cleft.
         for (int dx = -1; dx <= 1; dx++) {
-            if (set(level, origin.getX() + dx, origin.getY() - 1, origin.getZ() + r + 1,
+            if (set(level, origin.getX() + dx, origin.getY() - 1, origin.getZ() + zOuter,
                     Blocks.POLISHED_BLACKSTONE.defaultBlockState())) placed++;
         }
         return placed;
@@ -442,10 +391,18 @@ public final class OrthancBuilder {
 
     private static BlockState pillarPalette(int x, int y, int z) {
         int r = Math.floorMod(hash(x, y, z), 100);
-        if (r < 68) return Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
-        if (r < 86) return Blocks.POLISHED_BLACKSTONE.defaultBlockState();
-        if (r < 96) return Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState();
-        return Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+        if (r < 64) return Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+        if (r < 84) return Blocks.POLISHED_BLACKSTONE.defaultBlockState();
+        if (r < 94) return Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState();
+        if (r < 98) return Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+        return Blocks.BLACKSTONE.defaultBlockState();
+    }
+
+    private static BlockState bandPalette(int x, int y, int z) {
+        int r = Math.floorMod(hash(x, y, z), 100);
+        if (r < 70) return Blocks.POLISHED_BLACKSTONE.defaultBlockState();
+        if (r < 90) return Blocks.CHISELED_POLISHED_BLACKSTONE.defaultBlockState();
+        return Blocks.GILDED_BLACKSTONE.defaultBlockState();
     }
 
     private static BlockState foundationPalette(int x, int y, int z) {
@@ -458,7 +415,10 @@ public final class OrthancBuilder {
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    /** Build a straight stair block state with the given facing and half. */
+    private static int lerp(int a, int b, double t) {
+        return (int) Math.round(a + (b - a) * t);
+    }
+
     private static BlockState stair(net.minecraft.world.level.block.Block block, Direction facing, Half half) {
         return block.defaultBlockState()
                 .setValue(StairBlock.FACING, facing)
@@ -470,7 +430,7 @@ public final class OrthancBuilder {
     private static Direction inwardFace(int dx, int dz) {
         if (Math.abs(dx) > Math.abs(dz)) return dx > 0 ? Direction.WEST : Direction.EAST;
         if (Math.abs(dz) > Math.abs(dx)) return dz > 0 ? Direction.NORTH : Direction.SOUTH;
-        return null; // exact diagonal — ambiguous, skip
+        return null;
     }
 
     private static boolean set(ServerLevel level, int x, int y, int z, BlockState state) {
