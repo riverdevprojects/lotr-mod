@@ -1,8 +1,16 @@
 package com.lotrmod.conquest.command;
 
 import com.lotrmod.conquest.ConquestConfig;
+import com.lotrmod.conquest.block.ClaimBannerBlock;
+import com.lotrmod.conquest.block.ClaimBannerBlockEntity;
+import com.lotrmod.conquest.block.OutpostActions;
 import com.lotrmod.conquest.data.*;
 import com.lotrmod.conquest.network.S2CGuildDataPacket;
+import com.lotrmod.conquest.registry.ConquestItems;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -30,6 +38,9 @@ public class GuildCommand {
             .then(Commands.literal("invite")
                 .then(Commands.argument("player", EntityArgument.player())
                     .executes(ctx -> invite(ctx, EntityArgument.getPlayer(ctx, "player")))))
+            .then(Commands.literal("kick")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .executes(ctx -> kick(ctx, EntityArgument.getPlayer(ctx, "player")))))
             .then(Commands.literal("join")
                 .then(Commands.argument("name", StringArgumentType.greedyString())
                     .executes(ctx -> join(ctx, StringArgumentType.getString(ctx, "name")))))
@@ -44,6 +55,9 @@ public class GuildCommand {
             .then(Commands.literal("setjoin")
                 .then(Commands.argument("mode", StringArgumentType.word())
                     .executes(ctx -> setJoin(ctx, StringArgumentType.getString(ctx, "mode")))))
+            .then(Commands.literal("chat")
+                .then(Commands.argument("message", StringArgumentType.greedyString())
+                    .executes(ctx -> guildChat(ctx, StringArgumentType.getString(ctx, "message")))))
             .then(Commands.literal("info")
                 .executes(GuildCommand::info))
             .then(Commands.literal("ui")
@@ -57,6 +71,22 @@ public class GuildCommand {
                 .then(Commands.literal("declare")
                     .then(Commands.argument("guildname", StringArgumentType.greedyString())
                         .executes(ctx -> warDeclare(ctx, StringArgumentType.getString(ctx, "guildname"))))))
+            .then(Commands.literal("peace")
+                .then(Commands.literal("request")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceRequest(ctx, StringArgumentType.getString(ctx, "guildname")))))
+                .then(Commands.literal("accept")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceAccept(ctx, StringArgumentType.getString(ctx, "guildname")))))
+                .then(Commands.literal("decline")
+                    .then(Commands.argument("guildname", StringArgumentType.greedyString())
+                        .executes(ctx -> peaceDecline(ctx, StringArgumentType.getString(ctx, "guildname"))))))
+            .then(Commands.literal("outpost")
+                .then(Commands.literal("hire")
+                    .then(Commands.argument("currency", StringArgumentType.word())
+                        .executes(ctx -> outpostHire(ctx, StringArgumentType.getString(ctx, "currency")))))
+                .then(Commands.literal("abandon")
+                    .executes(GuildCommand::outpostAbandon)))
             .then(Commands.literal("treasury")
                 .then(Commands.literal("deposit")
                     .then(Commands.argument("resource", StringArgumentType.word())
@@ -71,6 +101,11 @@ public class GuildCommand {
                                 StringArgumentType.getString(ctx, "resource"),
                                 LongArgumentType.getLong(ctx, "amount")))))))
         );
+
+        // Short alias for guild chat: /gc <message>
+        dispatcher.register(Commands.literal("gc")
+            .then(Commands.argument("message", StringArgumentType.greedyString())
+                .executes(ctx -> guildChat(ctx, StringArgumentType.getString(ctx, "message")))));
     }
 
     // ── /guild create ────────────────────────────────────────────────────────
@@ -111,9 +146,39 @@ public class GuildCommand {
         if (data.getGuildForPlayer(target.getUUID()) != null) return fail(player, target.getName().getString() + " is already in a guild.");
 
         guild.pendingInvites.add(target.getUUID());
+        guild.kickedUUIDs.remove(target.getUUID()); // an invite lifts a prior kick bar
         data.setDirty();
         player.sendSystemMessage(msg("Invited " + target.getName().getString() + " to " + guild.name + "."));
         target.sendSystemMessage(msg("You have been invited to join '" + guild.name + "'! Type /guild join " + guild.name));
+        return 1;
+    }
+
+    // ── /guild kick ──────────────────────────────────────────────────────────
+
+    private static int kick(CommandContext<CommandSourceStack> ctx, ServerPlayer target) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        // Permission: only the master and officers may kick (enforced server-side).
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can kick members.");
+        if (!guild.isMember(target.getUUID())) return fail(player, target.getName().getString() + " is not in your guild.");
+        if (target.getUUID().equals(player.getUUID())) return fail(player, "You cannot kick yourself. Use /guild leave.");
+        // Immunity: the master and officers cannot be kicked by anyone.
+        if (guild.isMaster(target.getUUID())) return fail(player, "The Guild Master cannot be kicked.");
+        if (guild.isOfficer(target.getUUID())) return fail(player, "Officers cannot be kicked. Demote them first.");
+
+        guild.memberUUIDs.remove(target.getUUID());
+        guild.officerUUIDs.remove(target.getUUID());
+        guild.pendingInvites.remove(target.getUUID());
+        guild.kickedUUIDs.add(target.getUUID()); // barred until re-invited
+        data.refreshPlayerIndex(guild);
+        data.setDirty();
+        target.sendSystemMessage(msg("You were kicked from '" + guild.name + "'. You cannot rejoin unless invited."));
+        player.sendSystemMessage(msg("Kicked " + target.getName().getString() + " from " + guild.name + "."));
+        broadcastGuild(player.getServer(), guild, target.getName().getString() + " was kicked from the guild.", target.getUUID());
         return 1;
     }
 
@@ -128,6 +193,9 @@ public class GuildCommand {
 
         Guild guild = data.getGuildByName(name);
         if (guild == null) return fail(player, "No guild named '" + name + "' found.");
+
+        if (guild.kickedUUIDs.contains(player.getUUID()) && !guild.pendingInvites.contains(player.getUUID()))
+            return fail(player, "You were kicked from '" + guild.name + "' and cannot rejoin until an officer invites you.");
 
         if (guild.joinMode == JoinMode.INVITE_ONLY && !guild.pendingInvites.contains(player.getUUID()))
             return fail(player, "'" + guild.name + "' is invite-only.");
@@ -219,6 +287,29 @@ public class GuildCommand {
         return 1;
     }
 
+    // ── /guild chat | /gc ──────────────────────────────────────────────────
+
+    private static int guildChat(CommandContext<CommandSourceStack> ctx, String message) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        sendGuildChat(player, guild, message);
+        return 1;
+    }
+
+    /** Broadcasts a guild-chat line to every online member of the guild (and the sender). */
+    public static void sendGuildChat(ServerPlayer sender, Guild guild, String message) {
+        message = message.trim();
+        if (message.isEmpty()) return;
+        Component line = Component.literal("[Guild Chat] " + sender.getName().getString() + ": " + message);
+        for (UUID uuid : guild.memberUUIDs) {
+            ServerPlayer p = sender.getServer().getPlayerList().getPlayer(uuid);
+            if (p != null) p.sendSystemMessage(line);
+        }
+    }
+
     // ── /guild info ──────────────────────────────────────────────────────────
 
     private static int info(CommandContext<CommandSourceStack> ctx) {
@@ -289,7 +380,8 @@ public class GuildCommand {
             guild.treasury.getOrDefault(TreasuryResource.IRON, 0L),
             guild.treasury.getOrDefault(TreasuryResource.SILVER, 0L),
             wars,
-            data.onlineDay()
+            data.onlineDay(),
+            guild.canManage(viewer.getUUID())
         );
     }
 
@@ -393,6 +485,131 @@ public class GuildCommand {
         return 1;
     }
 
+    // ── /guild peace ─────────────────────────────────────────────────────────
+
+    private static int peaceRequest(CommandContext<CommandSourceStack> ctx, String targetName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can request peace.");
+
+        Guild target = data.getGuildByName(targetName);
+        if (target == null) return fail(player, "No guild named '" + targetName + "' found.");
+        if (target.id.equals(guild.id)) return fail(player, "You cannot make peace with yourself.");
+        if (!guild.wars.containsKey(target.id)) return fail(player, "You are not at war with '" + target.name + "'.");
+
+        if (target.peaceRequestsReceived.contains(guild.id))
+            return fail(player, "A peace request to '" + target.name + "' is already pending.");
+
+        // If the other side already offered us peace, requesting back simply accepts theirs.
+        if (guild.peaceRequestsReceived.contains(target.id)) {
+            return finalizePeace(player.getServer(), data, guild, target);
+        }
+
+        target.peaceRequestsReceived.add(guild.id);
+        data.setDirty();
+        player.sendSystemMessage(msg("Peace request sent to '" + target.name + "'. Awaiting their response."));
+
+        Component prompt = Component.literal("[Guild] '" + guild.name + "' has requested PEACE. ")
+            .append(clickable("[Accept]", net.minecraft.ChatFormatting.GREEN, "/guild peace accept " + guild.name))
+            .append(Component.literal(" "))
+            .append(clickable("[Decline]", net.minecraft.ChatFormatting.RED, "/guild peace decline " + guild.name));
+        for (UUID uuid : target.memberUUIDs) {
+            ServerPlayer p = player.getServer().getPlayerList().getPlayer(uuid);
+            if (p != null && target.canManage(uuid)) p.sendSystemMessage(prompt);
+        }
+        return 1;
+    }
+
+    private static int peaceAccept(CommandContext<CommandSourceStack> ctx, String offererName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can accept peace.");
+
+        Guild offerer = data.getGuildByName(offererName);
+        if (offerer == null) return fail(player, "No guild named '" + offererName + "' found.");
+        if (!guild.peaceRequestsReceived.contains(offerer.id))
+            return fail(player, "'" + offerer.name + "' has not requested peace with you.");
+
+        return finalizePeace(player.getServer(), data, guild, offerer);
+    }
+
+    private static int peaceDecline(CommandContext<CommandSourceStack> ctx, String offererName) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = requireGuild(player, data);
+        if (guild == null) return 0;
+        if (!guild.canManage(player.getUUID())) return fail(player, "Only officers and the master can decline peace.");
+
+        Guild offerer = data.getGuildByName(offererName);
+        if (offerer == null) return fail(player, "No guild named '" + offererName + "' found.");
+        if (!guild.peaceRequestsReceived.remove(offerer.id))
+            return fail(player, "'" + offerer.name + "' has no pending peace request with you.");
+        data.setDirty();
+
+        broadcastGuild(player.getServer(), guild, "Peace request from '" + offerer.name + "' was declined. The war continues.", null);
+        broadcastGuild(player.getServer(), offerer, "'" + guild.name + "' declined your peace request. The war continues.", null);
+        return 1;
+    }
+
+    /** Ends the war between the two guilds and clears any pending peace offers between them. */
+    private static int finalizePeace(net.minecraft.server.MinecraftServer server, GuildSavedData data, Guild a, Guild b) {
+        a.wars.remove(b.id);
+        b.wars.remove(a.id);
+        a.peaceRequestsReceived.remove(b.id);
+        b.peaceRequestsReceived.remove(a.id);
+        data.setDirty();
+
+        String announce = "☮ Peace! The war between '" + a.name + "' and '" + b.name + "' has ended.";
+        broadcastGuild(server, a, announce, null);
+        broadcastGuild(server, b, announce, null);
+        return 1;
+    }
+
+    /** Builds a clickable chat token that runs a command when clicked. */
+    private static Component clickable(String label, net.minecraft.ChatFormatting color, String command) {
+        return Component.literal(label).withStyle(style -> style
+            .withColor(color)
+            .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, command)));
+    }
+
+    // ── /guild outpost (hire guards / abandon) ───────────────────────────────
+    // Text fallbacks for the outpost GUI; both delegate to the shared OutpostActions,
+    // operating on the flag the player last opened (right-clicked).
+
+    private static int outpostHire(CommandContext<CommandSourceStack> ctx, String currency) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+        TreasuryResource cur;
+        if (currency.equalsIgnoreCase("gold")) cur = TreasuryResource.GOLD;
+        else if (currency.equalsIgnoreCase("silver")) cur = TreasuryResource.SILVER;
+        else return fail(player, "Choose a currency: gold or silver.");
+
+        BlockPos pos = ClaimBannerBlock.OPEN_OUTPOST.get(player.getUUID());
+        if (pos == null) return fail(player, "Right-click your outpost flag first.");
+        player.sendSystemMessage(msg(OutpostActions.hire(player, pos, cur)));
+        return 1;
+    }
+
+    private static int outpostAbandon(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = playerOrFail(ctx);
+        if (player == null) return 0;
+        BlockPos pos = ClaimBannerBlock.OPEN_OUTPOST.get(player.getUUID());
+        if (pos == null) return fail(player, "Right-click your outpost flag first.");
+        player.sendSystemMessage(msg(OutpostActions.abandon(player, pos)));
+        return 1;
+    }
+
     // ── /guild treasury ──────────────────────────────────────────────────────
 
     private static int treasuryDeposit(CommandContext<CommandSourceStack> ctx, String resource, long amount) {
@@ -406,10 +623,55 @@ public class GuildCommand {
         TreasuryResource res = parseResource(player, resource);
         if (res == null) return 0;
 
-        guild.treasury.merge(res, amount, Long::sum);
-        data.setDirty();
-        player.sendSystemMessage(msg("Deposited " + amount + " " + res.displayName() + " into the treasury. (Note: no item check in V1 — honour system.)"));
+        player.sendSystemMessage(msg(depositResource(player, res, amount)));
         return 1;
+    }
+
+    /** Item-based deposit shared by the command and the guild screen. Returns a result line. */
+    public static String depositResource(ServerPlayer player, TreasuryResource res, long max) {
+        GuildSavedData data = GuildSavedData.get(player.getServer());
+        Guild guild = data.getGuildForPlayer(player.getUUID());
+        if (guild == null) return "You are not in a guild.";
+        Item item = depositItem(res);
+        if (item == null) return res.displayName() + " cannot be deposited as an item.";
+        int have = countItem(player, item);
+        int toDeposit = (int) Math.min(max, have);
+        if (toDeposit <= 0) return "You have no " + res.displayName() + " to deposit.";
+
+        removeItems(player, item, toDeposit);
+        guild.treasury.merge(res, (long) toDeposit, Long::sum);
+        data.setDirty();
+        return "Deposited " + toDeposit + " " + res.displayName() + " into the treasury.";
+    }
+
+    private static Item depositItem(TreasuryResource res) {
+        if (res == TreasuryResource.SILVER) return ConquestItems.SILVER_INGOT.get();
+        return res.vanillaItem();
+    }
+
+    private static int countItem(ServerPlayer player, Item item) {
+        int n = 0;
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack st = inv.getItem(i);
+            if (st.is(item)) n += st.getCount();
+        }
+        return n;
+    }
+
+    private static void removeItems(ServerPlayer player, Item item, int count) {
+        var inv = player.getInventory();
+        int remaining = count;
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            ItemStack st = inv.getItem(i);
+            if (st.is(item)) {
+                int take = Math.min(remaining, st.getCount());
+                st.shrink(take);
+                remaining -= take;
+            }
+        }
+        inv.setChanged();
+        player.inventoryMenu.broadcastChanges();
     }
 
     private static int treasuryWithdraw(CommandContext<CommandSourceStack> ctx, String resource, long amount) {

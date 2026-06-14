@@ -3,6 +3,7 @@ package com.lotrmod;
 import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.conquest.ConquestSystem;
+import com.lotrmod.item.ModCreativeTabs;
 import com.lotrmod.item.ModItems;
 import com.lotrmod.worldgen.LOTRWorldGen;
 import com.lotrmod.worldgen.LandmaskLoader;
@@ -32,6 +33,7 @@ public class LOTRMod {
         // Register blocks and items
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
+        ModCreativeTabs.register(modEventBus);
 
         // Register world generation components
         LOTRWorldGen.register(modEventBus);

@@ -31,10 +31,45 @@ public class ClaimProtectionHandler {
         Player player = event.getPlayer();
         if (!(player instanceof ServerPlayer sp)) return;
         if (!(player.level() instanceof ServerLevel sl)) return;
-        if (isDenied(sl, sp, event.getPos())) {
-            event.setCanceled(true);
-            sendDenied(sp);
+
+        BlockPos pos = event.getPos();
+        GuildSavedData data = GuildSavedData.get(sl.getServer());
+        Guild owner = data.getChunkOwner(new ChunkPos(pos));
+        if (owner == null) return; // unclaimed — allow
+
+        boolean isFlag = isClaimBanner(event.getState());
+
+        if (isFlag) {
+            if (owner.isMember(sp.getUUID())) {
+                // A guild can never destroy its own flag by mining — not even the master/officer.
+                // The only sanctioned removal is the abandon action in the outpost menu.
+                event.setCanceled(true);
+                sendMessage(sp, "You cannot mine your own guild's flag. Use the outpost menu to abandon it.");
+                return;
+            }
+            // Non-member: an enemy flag is only mineable while at war with the owning guild.
+            Guild breakerGuild = data.getGuildForPlayer(sp.getUUID());
+            boolean atWar = breakerGuild != null && owner.wars.containsKey(breakerGuild.id);
+            if (!atWar) {
+                event.setCanceled(true);
+                sendMessage(sp, "You can only destroy this flag while your guild is at war with '" + owner.name + "'.");
+            } else {
+                // Attacking an enemy flag during war is hostile — rouse the defenders.
+                aggroNearbyGuards(sl, sp, pos);
+                // Destroying the base captures the land: mark it so a captured flag is auto-planted.
+                if (event.getState().is(ConquestBlocks.CLAIM_BANNER_BASE.get())
+                    && sl.getBlockEntity(pos) instanceof com.lotrmod.conquest.block.ClaimBannerBlockEntity be) {
+                    be.capturedBy = breakerGuild.id;
+                }
+            }
+            return;
         }
+
+        // Any non-flag block in claimed territory is protected from non-members, regardless of war.
+        if (owner.isMember(sp.getUUID())) return;
+        event.setCanceled(true);
+        sendDenied(sp);
+        aggroNearbyGuards(sl, sp, pos);
     }
 
     @SubscribeEvent
@@ -46,6 +81,7 @@ public class ClaimProtectionHandler {
         if (isDenied(sl, sp, event.getPos())) {
             event.setCanceled(true);
             sendDenied(sp);
+            aggroNearbyGuards(sl, sp, event.getPos());
         }
     }
 
@@ -83,12 +119,16 @@ public class ClaimProtectionHandler {
     }
 
     private void sendDenied(ServerPlayer player) {
+        sendMessage(player, "This land is claimed. You cannot interact here.");
+    }
+
+    /** Rate-limited "[Conquest]" message to avoid chat spam from repeated denials. */
+    private void sendMessage(ServerPlayer player, String text) {
         long now = player.level().getGameTime();
         long last = lastDeniedTick.getOrDefault(player.getUUID(), 0L);
         if (now - last < DENY_COOLDOWN_TICKS) return;
         lastDeniedTick.put(player.getUUID(), now);
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "[Conquest] This land is claimed. You cannot interact here."));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("[Conquest] " + text));
     }
 
     /** Trigger guards when a non-member does something hostile in a claimed chunk. */
@@ -126,5 +166,12 @@ public class ClaimProtectionHandler {
                state.is(ConquestBlocks.CLAIM_BANNER_POLE.get()) ||
                state.is(ConquestBlocks.CLAIM_BANNER_TOP.get()) ||
                state.is(ConquestBlocks.WAR_BANNER.get());
+    }
+
+    /** True for the claim-banner (flag) structure blocks — NOT the war banner. */
+    private boolean isClaimBanner(net.minecraft.world.level.block.state.BlockState state) {
+        return state.is(ConquestBlocks.CLAIM_BANNER_BASE.get()) ||
+               state.is(ConquestBlocks.CLAIM_BANNER_POLE.get()) ||
+               state.is(ConquestBlocks.CLAIM_BANNER_TOP.get());
     }
 }

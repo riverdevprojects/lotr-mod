@@ -43,6 +43,12 @@ public class Guild {
     /** Pending invite UUIDs. */
     public final Set<UUID> pendingInvites = new HashSet<>();
 
+    /** Players who were kicked — barred from rejoining until re-invited. */
+    public final Set<UUID> kickedUUIDs = new HashSet<>();
+
+    /** Guild ids that have offered us a peace treaty and are awaiting our accept/decline. */
+    public final Set<UUID> peaceRequestsReceived = new HashSet<>();
+
     /** Block-placement dev score inside claimed chunks (approximates development tier). */
     public long developmentScore = 0L;
 
@@ -95,6 +101,28 @@ public class Guild {
         return list;
     }
 
+    /** True if the treasury holds at least the given cost of every listed resource. */
+    public boolean canAfford(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            if (treasury.getOrDefault(e.getKey(), 0L) < e.getValue()) return false;
+        }
+        return true;
+    }
+
+    /** Deducts the given cost from the treasury (clamped at zero). */
+    public void charge(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            treasury.merge(e.getKey(), -e.getValue(), (a, b) -> Math.max(0, a + b));
+        }
+    }
+
+    /** Returns the given resources to the treasury. */
+    public void refund(Map<TreasuryResource, Long> cost) {
+        for (Map.Entry<TreasuryResource, Long> e : cost.entrySet()) {
+            treasury.merge(e.getKey(), e.getValue(), Long::sum);
+        }
+    }
+
     public boolean canAffordUpkeep() {
         int bracket = TreasuryResource.upkeepBracket(bannerCount());
         if (bracket == 0) return true;
@@ -134,6 +162,8 @@ public class Guild {
         tag.put("officers", saveUUIDs(officerUUIDs));
         tag.put("members", saveUUIDs(memberUUIDs));
         tag.put("invites", saveUUIDs(pendingInvites));
+        tag.put("kicked", saveUUIDs(kickedUUIDs));
+        tag.put("peaceRequests", saveUUIDs(peaceRequestsReceived));
         tag.put("disbandVotes", saveUUIDs(disbandVotes));
 
         CompoundTag treas = new CompoundTag();
@@ -179,6 +209,8 @@ public class Guild {
         g.memberUUIDs.clear();
         loadUUIDs(tag.getList("members",      Tag.TAG_COMPOUND), g.memberUUIDs);
         loadUUIDs(tag.getList("invites",      Tag.TAG_COMPOUND), g.pendingInvites);
+        loadUUIDs(tag.getList("kicked",       Tag.TAG_COMPOUND), g.kickedUUIDs);
+        loadUUIDs(tag.getList("peaceRequests",Tag.TAG_COMPOUND), g.peaceRequestsReceived);
         loadUUIDs(tag.getList("disbandVotes", Tag.TAG_COMPOUND), g.disbandVotes);
 
         CompoundTag treas = tag.getCompound("treasury");

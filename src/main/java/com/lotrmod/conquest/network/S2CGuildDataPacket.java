@@ -26,7 +26,8 @@ public record S2CGuildDataPacket(
     int bannerCount,
     long bread, long cobblestone, long logs, long gold, long iron, long silver,
     List<String> warOpponents,
-    long onlineDay
+    long onlineDay,
+    boolean canManage
 ) implements CustomPacketPayload {
 
     public static final Type<S2CGuildDataPacket> TYPE =
@@ -55,6 +56,7 @@ public record S2CGuildDataPacket(
         buf.writeLong(pkt.silver);
         writeStringList(buf, pkt.warOpponents);
         buf.writeLong(pkt.onlineDay);
+        buf.writeBoolean(pkt.canManage);
     }
 
     private static S2CGuildDataPacket decode(FriendlyByteBuf buf) {
@@ -66,7 +68,8 @@ public record S2CGuildDataPacket(
             buf.readLong(), buf.readLong(), buf.readLong(),
             buf.readLong(), buf.readLong(), buf.readLong(),
             readStringList(buf),
-            buf.readLong()
+            buf.readLong(),
+            buf.readBoolean()
         );
     }
 
@@ -84,6 +87,13 @@ public record S2CGuildDataPacket(
 
     /** Handled on the client thread. */
     public static void handle(S2CGuildDataPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new GuildScreen(packet)));
+        context.enqueueWork(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen instanceof GuildScreen existing) {
+                existing.refresh(packet);
+            } else {
+                mc.setScreen(new GuildScreen(packet));
+            }
+        });
     }
 }
