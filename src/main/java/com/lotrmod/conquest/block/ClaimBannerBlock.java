@@ -109,16 +109,28 @@ public class ClaimBannerBlock extends BaseEntityBlock {
             }
             guild.charge(ConquestCosts.FLAG_COST);
 
-            // Valid — attach guild id to block entity and start auto-build
-            BlockEntity be = level.getBlockEntity(pos);
+            // The watchtower rises from where the banner was planted; the flag itself is relocated
+            // to the centre of the top floor (reached by climbing the interior stairs).
+            ServerLevel serverLevel = (ServerLevel) level;
+            BlockPos groundPos = pos;
+            BlockPos flagPos = pos.above(ClaimBannerBlockEntity.FLAG_FLOOR_OFFSET);
+
+            // Clear the freshly-placed ground banner (guildId not yet set, so onRemove is a no-op)
+            // and plant it up on the top floor.
+            serverLevel.removeBlock(groundPos, false);
+            serverLevel.setBlock(flagPos, ConquestBlocks.CLAIM_BANNER_BASE.get().defaultBlockState(), 3);
+
+            BlockEntity be = serverLevel.getBlockEntity(flagPos);
             if (be instanceof ClaimBannerBlockEntity bannerBE) {
-                bannerBE.initialize(guild.id, chunks);
+                bannerBE.initialize(guild.id, chunks, groundPos);
                 bannerBE.addInvested(ConquestCosts.FLAG_COST); // tracked for refund on abandon
-                guild.addBanner(pos, chunks);
+                guild.addBanner(flagPos, chunks);
                 data.refreshChunkIndex(guild);
                 data.setDirty();
+                ClaimBannerBlockEntity.buildOutpostTower(serverLevel, groundPos, flagPos);
                 player.sendSystemMessage(Component.literal(
-                    "[Conquest] Outpost founded! Claiming " + chunks.size() + " chunks for " + guild.name + "."));
+                    "[Conquest] Outpost founded! A watchtower rises — your flag flies on its top floor. "
+                        + "Claiming " + chunks.size() + " chunks for " + guild.name + "."));
             }
         }
     }
