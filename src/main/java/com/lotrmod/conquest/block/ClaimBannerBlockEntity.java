@@ -12,10 +12,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.core.HolderLookup;
 
@@ -108,80 +110,79 @@ public class ClaimBannerBlockEntity extends BlockEntity {
     }
 
     // ── Tower construction ─────────────────────────────────────────────────────
+    //
+    // A three-storey stone keep on a flared, lit base: weathered quoined walls, arched glowing
+    // windows with sills, projecting stone cornices, overhanging timber galleries with corner
+    // lamp-posts, a crenellated parapet, and a tall banded sandstone spire. The flag stands in
+    // the centre of the top floor, reached by two interior staircases with railings.
 
-    // Palette
-    private static final BlockState BRICK    = Blocks.STONE_BRICKS.defaultBlockState();
-    private static final BlockState CRACKED  = Blocks.CRACKED_STONE_BRICKS.defaultBlockState();
-    private static final BlockState MOSSY    = Blocks.MOSSY_STONE_BRICKS.defaultBlockState();
-    private static final BlockState CHISELED = Blocks.CHISELED_STONE_BRICKS.defaultBlockState();
-    private static final BlockState POST     = Blocks.SPRUCE_LOG.defaultBlockState();
-    private static final BlockState PLANK    = Blocks.SPRUCE_PLANKS.defaultBlockState();
-    private static final BlockState WINDOW   = Blocks.IRON_BARS.defaultBlockState();
-    private static final BlockState LANTERN  = Blocks.LANTERN.defaultBlockState();
-    private static final BlockState SEA_LAMP = Blocks.SEA_LANTERN.defaultBlockState();
-    private static final BlockState ROOF_FILL = Blocks.CUT_SANDSTONE.defaultBlockState();
-    private static final BlockState SPIRE    = Blocks.SANDSTONE_WALL.defaultBlockState();
-    private static final BlockState AIR      = Blocks.AIR.defaultBlockState();
+    // ── Palette ──
+    private static final BlockState BRICK      = Blocks.STONE_BRICKS.defaultBlockState();
+    private static final BlockState CRACKED    = Blocks.CRACKED_STONE_BRICKS.defaultBlockState();
+    private static final BlockState MOSSY      = Blocks.MOSSY_STONE_BRICKS.defaultBlockState();
+    private static final BlockState CHISELED   = Blocks.CHISELED_STONE_BRICKS.defaultBlockState();
+    private static final BlockState COBBLE     = Blocks.COBBLESTONE.defaultBlockState();
+    private static final BlockState ANDESITE   = Blocks.POLISHED_ANDESITE.defaultBlockState();
+    private static final BlockState POST       = Blocks.SPRUCE_LOG.defaultBlockState();
+    private static final BlockState STRIPPED   = Blocks.STRIPPED_SPRUCE_LOG.defaultBlockState();
+    private static final BlockState PLANK      = Blocks.SPRUCE_PLANKS.defaultBlockState();
+    private static final BlockState FENCE      = Blocks.SPRUCE_FENCE.defaultBlockState();
+    private static final BlockState BARS       = Blocks.IRON_BARS.defaultBlockState();
+    private static final BlockState PANE       = Blocks.GLASS_PANE.defaultBlockState();
+    private static final BlockState LANTERN    = Blocks.LANTERN.defaultBlockState();
+    private static final BlockState SEA_LAMP   = Blocks.SEA_LANTERN.defaultBlockState();
+    private static final BlockState CHAIN      = Blocks.CHAIN.defaultBlockState();
+    private static final BlockState BARREL     = Blocks.BARREL.defaultBlockState();
+    private static final BlockState BOOKSHELF  = Blocks.BOOKSHELF.defaultBlockState();
+    private static final BlockState BRICK_WALL = Blocks.STONE_BRICK_WALL.defaultBlockState();
+    private static final BlockState ROOF_FILL  = Blocks.CUT_SANDSTONE.defaultBlockState();
+    private static final BlockState ROOF_BAND  = Blocks.SMOOTH_SANDSTONE.defaultBlockState();
+    private static final BlockState ROOF_TRIM  = Blocks.CHISELED_SANDSTONE.defaultBlockState();
+    private static final BlockState SPIRE      = Blocks.SANDSTONE_WALL.defaultBlockState();
+    private static final BlockState FINIAL     = Blocks.END_ROD.defaultBlockState();
+    private static final BlockState AIR        = Blocks.AIR.defaultBlockState();
 
-    private static final int HALF = 3;     // 7x7 footprint
+    private static final int HALF  = 3;    // 7x7 tower body
     private static final int INNER = 2;    // 5x5 interior
-    /** Floor-block Y (relative to ground) the player stands on for each story. */
-    private static final int[] FLOOR = {-1, 4, 9}; // ground, middle, top (flag floor)
+    private static final int OUT   = 4;    // one ring beyond the walls (HALF + 1)
+    /** Wall base (first wall course) Y for each storey, relative to the ground placement. */
+    private static final int[] STOREY = {0, 5, 10};
 
     /**
-     * Raises the grand watchtower for the outpost: a three-storey stone-brick keep with spruce
-     * corner posts, barred windows, overhanging eaves, an interior staircase climbing to the top
-     * floor where the flag is planted, and a tiered sandstone roof crowned by a lit spire.
+     * Raises the full watchtower around the relocated flag.
      *
      * @param g        ground position (centre of the tower's base, where the banner was placed)
      * @param flagPos  where the relocated flag now stands (top floor centre)
      */
     public static void buildOutpostTower(ServerLevel level, BlockPos g, BlockPos flagPos) {
-        // 1. Hollow out the interior so terrain never pokes through, keeping the flag column.
-        for (int dy = 0; dy <= 13; dy++) {
-            for (int dx = -INNER; dx <= INNER; dx++) {
-                for (int dz = -INNER; dz <= INNER; dz++) {
-                    if (isFlagColumn(dx, dz, dy)) continue;
-                    set(level, g.offset(dx, dy, dz), AIR);
-                }
-            }
+        clearInterior(level, g);
+        buildBase(level, g);
+
+        for (int s = 0; s < 3; s++) {
+            buildStoreyWalls(level, g, s);
         }
+        buildCornerPosts(level, g);
 
-        buildFoundation(level, g);
+        // Inter-storey floors with stairwell slots for the flights below.
+        buildFloor(level, g, 4, -2, +1);
+        buildFloor(level, g, 9, +2, +1);
 
-        // 2. Three storeys of walls.
-        for (int story = 0; story < 3; story++) {
-            int base = FLOOR[story] + 1;           // first wall course sits on the floor
-            buildStoreyWalls(level, g, story, base);
-        }
+        // Decorative bands between storeys: stone cornices + overhanging timber galleries.
+        cornice(level, g, 4);
+        cornice(level, g, 9);
+        timberGallery(level, g, 4);
+        timberGallery(level, g, 9);
 
-        // 3. Corner posts run the full height for a timber-framed look.
-        for (int dy = 0; dy <= 13; dy++) {
-            set(level, g.offset( HALF, dy,  HALF), POST);
-            set(level, g.offset( HALF, dy, -HALF), POST);
-            set(level, g.offset(-HALF, dy,  HALF), POST);
-            set(level, g.offset(-HALF, dy, -HALF), POST);
-        }
+        buildFlight(level, g, 0, -2);   // ground -> middle (west wall)
+        buildFlight(level, g, 5, +2);   // middle -> top  (east wall)
+        stairRailings(level, g);
 
-        // 4. Inter-storey floors + overhanging eaves at each floor line and the roof base.
-        buildFloor(level, g, 4, -2, +1);   // floor between storey 0 and 1 (stair slot on west, +z)
-        buildFloor(level, g, 9, +2, +1);   // floor between storey 1 and 2 (stair slot on east, +z)
-        eaves(level, g, 4);
-        eaves(level, g, 9);
-        eaves(level, g, 14);
-
-        // 5. Interior staircases climbing each storey.
-        buildFlight(level, g, 0, -2);      // ground -> middle along west wall
-        buildFlight(level, g, 5, +2);      // middle -> top along east wall
-
-        // 6. Tiered sandstone roof above the top floor, plus a lit spire.
+        crenellatedParapet(level, g, 14);
         buildRoof(level, g);
 
-        // 7. Interior lighting and the flag's own pole/top decoration.
-        set(level, g.offset(INNER, FLOOR[0] + 1, INNER), LANTERN);
-        set(level, g.offset(INNER, FLOOR[1] + 1, INNER), LANTERN);
-        set(level, g.offset(INNER, FLOOR[2] + 1, INNER), LANTERN);
+        furnishInteriors(level, g);
 
+        // The flag's own pole/top decoration (the base block is already planted at flagPos).
         set(level, flagPos.above(),  ConquestBlocks.CLAIM_BANNER_POLE.get().defaultBlockState());
         set(level, flagPos.above(2), ConquestBlocks.CLAIM_BANNER_TOP.get().defaultBlockState());
     }
@@ -191,163 +192,322 @@ public class ClaimBannerBlockEntity extends BlockEntity {
         return dx == 0 && dz == 0 && dy >= FLAG_FLOOR_OFFSET && dy <= FLAG_FLOOR_OFFSET + 2;
     }
 
-    private static void buildFoundation(ServerLevel level, BlockPos g) {
-        // Solid 7x7 pad the tower sits on.
-        for (int dx = -HALF; dx <= HALF; dx++) {
-            for (int dz = -HALF; dz <= HALF; dz++) {
-                set(level, g.offset(dx, -1, dz), BRICK);
+    /** Hollows out the interior so terrain never pokes through, keeping the flag column. */
+    private static void clearInterior(ServerLevel level, BlockPos g) {
+        for (int dy = 0; dy <= 13; dy++) {
+            for (int dx = -INNER; dx <= INNER; dx++) {
+                for (int dz = -INNER; dz <= INNER; dz++) {
+                    if (isFlagColumn(dx, dz, dy)) continue;
+                    put(level, g, dx, dy, dz, AIR);
+                }
             }
         }
-        // Flared plinth one block wider on the four faces, with sea lanterns for the lit base glow.
-        for (int d = -HALF; d <= HALF; d++) {
-            set(level, g.offset(d, -1,  HALF + 1), BRICK);
-            set(level, g.offset(d, -1, -HALF - 1), BRICK);
-            set(level, g.offset( HALF + 1, -1, d), BRICK);
-            set(level, g.offset(-HALF - 1, -1, d), BRICK);
-        }
-        set(level, g.offset(0, -1,  HALF + 1), SEA_LAMP);
-        set(level, g.offset(0, -1, -HALF - 1), SEA_LAMP);
-        set(level, g.offset( HALF + 1, -1, 0), SEA_LAMP);
-        set(level, g.offset(-HALF - 1, -1, 0), SEA_LAMP);
-
-        // Lanterns flanking the ground-floor doorway (south face, +z).
-        set(level, g.offset(-1, 0, HALF), LANTERN);
-        set(level, g.offset( 1, 0, HALF), LANTERN);
     }
 
-    private static void buildStoreyWalls(ServerLevel level, BlockPos g, int story, int base) {
+    /** Flared, lit, stepped foundation the tower stands on, plus the approach to the gateway. */
+    private static void buildBase(ServerLevel level, BlockPos g) {
+        // Two solid pads for depth on uneven ground (9x9 then 7x7 beneath).
+        for (int dx = -OUT; dx <= OUT; dx++) {
+            for (int dz = -OUT; dz <= OUT; dz++) {
+                put(level, g, dx, -1, dz, foundationBlock(dx, dz));
+                if (Math.abs(dx) <= HALF && Math.abs(dz) <= HALF) {
+                    put(level, g, dx, -2, dz, foundationBlock(dx, -dz));
+                }
+            }
+        }
+        // Battered skirt: stairs flaring out at the base.
+        for (int d = -HALF; d <= HALF; d++) {
+            put(level, g, d, 0,  OUT, stair(Blocks.STONE_BRICK_STAIRS, Direction.NORTH, false));
+            put(level, g, d, 0, -OUT, stair(Blocks.STONE_BRICK_STAIRS, Direction.SOUTH, false));
+            put(level, g,  OUT, 0, d, stair(Blocks.STONE_BRICK_STAIRS, Direction.WEST, false));
+            put(level, g, -OUT, 0, d, stair(Blocks.STONE_BRICK_STAIRS, Direction.EAST, false));
+        }
+        // Lit base glow (the green-gold light in the reference shot).
+        put(level, g, 0, -1,  OUT, SEA_LAMP);
+        put(level, g, 0, -1, -OUT, SEA_LAMP);
+        put(level, g,  OUT, -1, 0, SEA_LAMP);
+        put(level, g, -OUT, -1, 0, SEA_LAMP);
+
+        // Approach threshold and path up to the south doorway.
+        put(level, g, 0, 0,  OUT, stair(Blocks.STONE_BRICK_STAIRS, Direction.NORTH, false));
+        put(level, g, 0, -1, OUT + 1, COBBLE);
+        put(level, g, -1, -1, OUT + 1, COBBLE);
+        put(level, g, 1, -1, OUT + 1, COBBLE);
+
+        // Lanterns flanking the gateway.
+        put(level, g, -2, 1, HALF, LANTERN);
+        put(level, g,  2, 1, HALF, LANTERN);
+    }
+
+    private static BlockState foundationBlock(int dx, int dz) {
+        int h = Math.floorMod(dx * 7 + dz * 13, 5);
+        return h == 0 ? COBBLE : h == 1 ? CRACKED : BRICK;
+    }
+
+    /** One storey of walls: quoined corners, arched glowing windows, and a ground-floor gateway. */
+    private static void buildStoreyWalls(ServerLevel level, BlockPos g, int storey) {
+        int base = STOREY[storey];
+        boolean top = storey == 2;
+        int winTop = top ? base + 3 : base + 2;   // taller windows on the flag floor
+
         for (int dy = base; dy <= base + 3; dy++) {
             for (int dx = -HALF; dx <= HALF; dx++) {
                 for (int dz = -HALF; dz <= HALF; dz++) {
                     boolean edge = Math.abs(dx) == HALF || Math.abs(dz) == HALF;
                     if (!edge) continue;
-                    if (Math.abs(dx) == HALF && Math.abs(dz) == HALF) continue; // corner posts placed separately
+                    if (Math.abs(dx) == HALF && Math.abs(dz) == HALF) continue; // corner posts
 
-                    // Ground-floor doorway: south face centre, two blocks tall.
-                    if (story == 0 && dz == HALF && dx == 0 && dy <= base + 1) {
+                    // Ground gateway: 3-wide, 2-tall arched opening on the south face.
+                    if (storey == 0 && dz == HALF) {
+                        if (Math.abs(dx) <= 1 && dy <= base + 1) continue;                 // doorway
+                        if (dx == 0 && dy == base + 2) continue;                            // arch crown gap
+                        if (Math.abs(dx) == 1 && dy == base + 2) {                           // arch haunches
+                            put(level, g, dx, dy, dz, stair(Blocks.STONE_BRICK_STAIRS,
+                                dx > 0 ? Direction.WEST : Direction.EAST, false));
+                            continue;
+                        }
+                        if (dx == 0 && dy == base + 3) { put(level, g, dx, dy, dz, CHISELED); continue; }
+                    }
+
+                    // Windows: centre column of each face — bars (ground) or panes, with a keystone.
+                    if (isWindowColumn(dx, dz, storey) && dy >= base + 1 && dy <= winTop) {
+                        put(level, g, dx, dy, dz, storey == 0 ? BARS : PANE);
                         continue;
                     }
-                    // Barred windows: centre of each face, the middle two courses.
-                    if (isWindow(dx, dz, dy, base, story)) {
-                        set(level, g.offset(dx, dy, dz), WINDOW);
+                    if (isWindowColumn(dx, dz, storey) && dy == winTop + 1 && !top) {
+                        put(level, g, dx, dy, dz, CHISELED); // lintel keystone
                         continue;
                     }
-                    set(level, g.offset(dx, dy, dz), wallBlock(dx, dy, dz));
+
+                    put(level, g, dx, dy, dz, wallBlock(dx, dy, dz));
                 }
             }
         }
-        // Chiseled lintel above the doorway.
-        if (story == 0) {
-            set(level, g.offset(0, base + 2, HALF), CHISELED);
-        }
+        addSills(level, g, storey, base);
     }
 
-    private static boolean isWindow(int dx, int dz, int dy, int base, int story) {
-        boolean midCourse = dy == base + 1 || dy == base + 2;
-        if (!midCourse) return false;
-        // North / south faces: window at the centre column. (South storey-0 centre is the door.)
-        if (Math.abs(dz) == HALF && dx == 0) {
-            return !(story == 0 && dz == HALF);
-        }
-        // East / west faces: window at the centre column.
+    /** True if (dx,dz) is the central window column of a wall face (skipping the south gateway). */
+    private static boolean isWindowColumn(int dx, int dz, int storey) {
+        if (Math.abs(dz) == HALF && dx == 0) return !(storey == 0 && dz == HALF);
         return Math.abs(dx) == HALF && dz == 0;
     }
 
-    /** Weathered stone-brick texture chosen deterministically by position. */
+    /** A projecting slab sill beneath each upper-storey window. */
+    private static void addSills(ServerLevel level, BlockPos g, int storey, int base) {
+        if (storey == 0) return; // ground windows sit on the battered skirt
+        BlockState sill = slab(Blocks.STONE_BRICK_SLAB, true);
+        put(level, g, 0, base,  OUT, sill);
+        put(level, g, 0, base, -OUT, sill);
+        put(level, g,  OUT, base, 0, sill);
+        put(level, g, -OUT, base, 0, sill);
+    }
+
+    /** Weathered, quoined stone-brick wall block chosen by position. */
     private static BlockState wallBlock(int dx, int dy, int dz) {
+        boolean quoin = (Math.abs(dz) == HALF && Math.abs(dx) == INNER)
+                     || (Math.abs(dx) == HALF && Math.abs(dz) == INNER);
+        if (quoin) return (dy % 2 == 0) ? CHISELED : BRICK;
         int h = Math.floorMod(dx * 31 + dy * 17 + dz * 13, 12);
         if (h == 0) return MOSSY;
         if (h == 1 || h == 2) return CRACKED;
         return BRICK;
     }
 
+    /** Spruce-log corner posts with stripped-log capitals at each floor line. */
+    private static void buildCornerPosts(ServerLevel level, BlockPos g) {
+        for (int[] c : CORNERS) {
+            for (int dy = 0; dy <= 13; dy++) {
+                boolean capital = dy == 0 || dy == 4 || dy == 9 || dy == 13;
+                put(level, g, c[0], dy, c[1], capital ? STRIPPED : POST);
+            }
+        }
+    }
+
+    private static final int[][] CORNERS =
+        {{HALF, HALF}, {HALF, -HALF}, {-HALF, HALF}, {-HALF, -HALF}};
+
     /**
-     * Lays a full floor at height {@code y}, stone-brick rim with a spruce-plank interior, leaving a
-     * stairwell slot so the staircase below can emerge.
-     *
-     * @param slotX  interior x-column occupied by the staircase (its slab is left open)
-     * @param slotZEnd  the +z end of the run; the slot covers dz in [-INNER .. slotZEnd]
+     * Lays a full floor at height {@code y}: stone-brick rim, spruce-plank interior with a
+     * polished-andesite centre motif, leaving a stairwell slot for the flight below.
      */
     private static void buildFloor(ServerLevel level, BlockPos g, int y, int slotX, int slotZEnd) {
         for (int dx = -HALF; dx <= HALF; dx++) {
             for (int dz = -HALF; dz <= HALF; dz++) {
-                // Leave the stairwell open above the flight below.
-                if (dx == slotX && dz >= -INNER && dz <= slotZEnd) continue;
+                if (dx == slotX && dz >= -INNER && dz <= slotZEnd) continue; // stairwell
+                if (Math.abs(dx) == HALF && Math.abs(dz) == HALF) continue;  // corner post
                 boolean rim = Math.abs(dx) == HALF || Math.abs(dz) == HALF;
-                if (Math.abs(dx) == HALF && Math.abs(dz) == HALF) continue; // corner post
-                set(level, g.offset(dx, y, dz), rim ? BRICK : PLANK);
+                BlockState floor = rim ? BRICK
+                    : (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx == 0 || dz == 0)) ? ANDESITE
+                    : PLANK;
+                put(level, g, dx, y, dz, floor);
             }
         }
     }
 
-    /** Overhanging spruce-stair eaves on the four faces at the given floor line. */
-    private static void eaves(ServerLevel level, BlockPos g, int y) {
-        for (int d = -HALF; d <= HALF; d++) {
-            set(level, g.offset(d, y,  HALF + 1), eaveStair(Direction.NORTH));
-            set(level, g.offset(d, y, -HALF - 1), eaveStair(Direction.SOUTH));
-            set(level, g.offset( HALF + 1, y, d), eaveStair(Direction.WEST));
-            set(level, g.offset(-HALF - 1, y, d), eaveStair(Direction.EAST));
+    /** Projecting stone cornice (corbels + chiseled corners) at a floor line. */
+    private static void cornice(ServerLevel level, BlockPos g, int y) {
+        corbelRing(level, g, y, OUT);
+        for (int[] c : new int[][]{{OUT, OUT}, {OUT, -OUT}, {-OUT, OUT}, {-OUT, -OUT}}) {
+            put(level, g, c[0], y, c[1], CHISELED);
         }
     }
 
-    private static BlockState eaveStair(Direction inward) {
-        return Blocks.SPRUCE_STAIRS.defaultBlockState()
-            .setValue(StairBlock.FACING, inward)
-            .setValue(StairBlock.HALF, Half.TOP);
+    /** Overhanging timber gallery (deck + railing + corner lamp-posts) wrapping a floor line. */
+    private static void timberGallery(ServerLevel level, BlockPos g, int y) {
+        ring(level, g, y + 1, OUT, slab(Blocks.SPRUCE_SLAB, false)); // deck on the cornice
+        ring(level, g, y + 2, OUT, FENCE);                            // railing
+        for (int[] c : new int[][]{{OUT, OUT}, {OUT, -OUT}, {-OUT, OUT}, {-OUT, -OUT}}) {
+            put(level, g, c[0], y + 2, c[1], STRIPPED);               // newel post
+            put(level, g, c[0], y + 3, c[1], LANTERN);                // lamp atop the newel
+        }
     }
 
-    /**
-     * Builds one straight flight of stone-brick stairs along the interior wall at {@code x = stairX},
-     * climbing in +z from {@code baseY} (a rise of five, landing on the floor above).
-     */
+    /** One straight stone-brick flight climbing +z from {@code baseY} (rise of five). */
     private static void buildFlight(ServerLevel level, BlockPos g, int baseY, int stairX) {
         for (int step = 0; step <= 4; step++) {
-            BlockState stair = Blocks.STONE_BRICK_STAIRS.defaultBlockState()
-                .setValue(StairBlock.FACING, Direction.NORTH) // ascends toward +z
-                .setValue(StairBlock.HALF, Half.BOTTOM);
-            set(level, g.offset(stairX, baseY + step, -INNER + step), stair);
+            put(level, g, stairX, baseY + step, -INNER + step,
+                stair(Blocks.STONE_BRICK_STAIRS, Direction.NORTH, false));
         }
     }
 
-    /** Tiered, overhanging sandstone roof above the top floor, crowned with a lit spire. */
+    /** Fence guard-rails along the open inboard edge of each stairwell so nobody falls in. */
+    private static void stairRailings(ServerLevel level, BlockPos g) {
+        for (int dz = -INNER; dz <= 0; dz++) put(level, g, -1, 5, dz, FENCE);   // middle-floor well
+        for (int dz = -INNER; dz <= 0; dz++) put(level, g,  1, 10, dz, FENCE);  // top-floor well
+    }
+
+    /** Crenellated stone parapet wrapping the roof base, with machicolation corbels. */
+    private static void crenellatedParapet(ServerLevel level, BlockPos g, int y) {
+        corbelRing(level, g, y, OUT);
+        ring(level, g, y + 1, OUT, slab(Blocks.STONE_BRICK_SLAB, false)); // walkway
+        for (int d = -OUT; d <= OUT; d++) {
+            if (Math.floorMod(d, 2) != 0) continue; // crenel gaps
+            put(level, g, d, y + 2,  OUT, BRICK);
+            put(level, g, d, y + 2, -OUT, BRICK);
+            put(level, g,  OUT, y + 2, d, BRICK);
+            put(level, g, -OUT, y + 2, d, BRICK);
+        }
+        // Wall caps on the corner merlons for a finished battlement.
+        for (int[] c : new int[][]{{OUT, OUT}, {OUT, -OUT}, {-OUT, OUT}, {-OUT, -OUT}}) {
+            put(level, g, c[0], y + 3, c[1], BRICK_WALL);
+        }
+    }
+
+    /** Tall banded sandstone spire roof above the flag floor, crowned with a lit finial. */
     private static void buildRoof(ServerLevel level, BlockPos g) {
-        // Closed deck over the top storey.
+        // Solid deck = ceiling of the flag room.
         for (int dx = -HALF; dx <= HALF; dx++) {
             for (int dz = -HALF; dz <= HALF; dz++) {
-                set(level, g.offset(dx, 14, dz), ROOF_FILL);
+                put(level, g, dx, 14, dz, ROOF_FILL);
             }
         }
-        // Stepped pyramid of sandstone stairs.
-        for (int layer = 0; layer <= HALF; layer++) {
-            int half = HALF - layer;
-            int y = 15 + layer;
-            for (int dx = -half; dx <= half; dx++) {
-                for (int dz = -half; dz <= half; dz++) {
-                    boolean edge = Math.abs(dx) == half || Math.abs(dz) == half;
-                    if (edge && half > 0) {
-                        set(level, g.offset(dx, y, dz), roofStair(dx, dz, half));
+        // Alternating tapered (stairs) and straight (band) courses for a tall, elegant pitch.
+        int[] half     = {3, 3, 2, 2, 1, 1, 0};
+        boolean[] taper = {true, false, true, false, true, false, false};
+        for (int i = 0; i < half.length; i++) {
+            int r = half[i];
+            int y = 15 + i;
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    boolean edge = Math.abs(dx) == r || Math.abs(dz) == r;
+                    if (r == 0) {
+                        put(level, g, dx, y, dz, ROOF_TRIM);
+                    } else if (edge && taper[i]) {
+                        put(level, g, dx, y, dz, roofStair(dx, dz));
+                    } else if (edge) {
+                        boolean corner = Math.abs(dx) == r && Math.abs(dz) == r;
+                        put(level, g, dx, y, dz, corner ? ROOF_TRIM : ROOF_BAND);
                     } else {
-                        set(level, g.offset(dx, y, dz), ROOF_FILL);
+                        put(level, g, dx, y, dz, ROOF_FILL);
                     }
                 }
             }
         }
-        // Spire.
-        set(level, g.offset(0, 19, 0), SPIRE);
-        set(level, g.offset(0, 20, 0), SPIRE);
-        set(level, g.offset(0, 21, 0), LANTERN);
+        // Finial spire.
+        put(level, g, 0, 22, 0, SPIRE);
+        put(level, g, 0, 23, 0, SPIRE);
+        put(level, g, 0, 24, 0, LANTERN);
+        put(level, g, 0, 25, 0, FINIAL);
     }
 
-    private static BlockState roofStair(int dx, int dz, int half) {
-        Direction facing;
-        if (Math.abs(dx) >= Math.abs(dz)) {
-            facing = dx >= 0 ? Direction.EAST : Direction.WEST;
-        } else {
-            facing = dz >= 0 ? Direction.SOUTH : Direction.NORTH;
+    /** Lights, props and themed furnishings for each interior storey (clear of the stair columns). */
+    private static void furnishInteriors(ServerLevel level, BlockPos g) {
+        // Hanging lanterns under each ceiling's interior corners.
+        int[] ceil = {3, 8, 13};
+        for (int floor = 0; floor < 3; floor++) {
+            int cy = ceil[floor];
+            for (int[] c : new int[][]{{INNER, INNER}, {INNER, -INNER}, {-INNER, INNER}, {-INNER, -INNER}}) {
+                put(level, g, c[0], cy, c[1], CHAIN);
+                put(level, g, c[0], cy - 1, c[1], hangingLantern());
+            }
         }
-        return Blocks.SMOOTH_SANDSTONE_STAIRS.defaultBlockState()
-            .setValue(StairBlock.FACING, facing)
-            .setValue(StairBlock.HALF, Half.BOTTOM);
+
+        // Ground floor — entrance hall: barrels and a small library along the north wall.
+        put(level, g,  1, 0, -2, BARREL);
+        put(level, g,  1, 1, -2, BARREL);
+        put(level, g,  0, 0, -2, BOOKSHELF);
+        put(level, g, -1, 0, -2, BOOKSHELF);
+        put(level, g, -1, 1, -2, BOOKSHELF);
+
+        // Middle floor — war room: barrel stores and a map table.
+        put(level, g, -1, 5, -2, BARREL);
+        put(level, g,  1, 5, -2, BARREL);
+        put(level, g,  0, 5, -2, STRIPPED);
+        put(level, g,  0, 6, -2, slab(Blocks.SPRUCE_SLAB, false));
+
+        // Top floor — the flag hall: a couple of floor lanterns by the north wall.
+        put(level, g, -1, 10, -2, LANTERN);
+        put(level, g,  1, 10, -2, LANTERN);
+    }
+
+    // ── Geometry helpers ──
+
+    /** Places a square ring of {@code state} at radius {@code r} and height {@code y}. */
+    private static void ring(ServerLevel level, BlockPos g, int y, int r, BlockState state) {
+        for (int d = -r; d <= r; d++) {
+            put(level, g, d, y,  r, state);
+            put(level, g, d, y, -r, state);
+            put(level, g,  r, y, d, state);
+            put(level, g, -r, y, d, state);
+        }
+    }
+
+    /** Ring of upside-down stairs forming corbels/brackets that face inward toward the wall. */
+    private static void corbelRing(ServerLevel level, BlockPos g, int y, int r) {
+        for (int d = -r; d <= r; d++) {
+            put(level, g, d, y,  r, stair(Blocks.STONE_BRICK_STAIRS, Direction.NORTH, true));
+            put(level, g, d, y, -r, stair(Blocks.STONE_BRICK_STAIRS, Direction.SOUTH, true));
+            put(level, g,  r, y, d, stair(Blocks.STONE_BRICK_STAIRS, Direction.WEST,  true));
+            put(level, g, -r, y, d, stair(Blocks.STONE_BRICK_STAIRS, Direction.EAST,  true));
+        }
+    }
+
+    private static BlockState roofStair(int dx, int dz) {
+        Direction facing;
+        if (Math.abs(dx) >= Math.abs(dz)) facing = dx >= 0 ? Direction.EAST : Direction.WEST;
+        else                              facing = dz >= 0 ? Direction.SOUTH : Direction.NORTH;
+        return stair(Blocks.SMOOTH_SANDSTONE_STAIRS, facing, false);
+    }
+
+    // ── Block-state builders ──
+
+    private static BlockState stair(Block b, Direction facing, boolean top) {
+        return b.defaultBlockState()
+            .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+            .setValue(BlockStateProperties.HALF, top ? Half.TOP : Half.BOTTOM);
+    }
+
+    private static BlockState slab(Block b, boolean top) {
+        return b.defaultBlockState()
+            .setValue(BlockStateProperties.SLAB_TYPE, top ? SlabType.TOP : SlabType.BOTTOM);
+    }
+
+    private static BlockState hangingLantern() {
+        return Blocks.LANTERN.defaultBlockState().setValue(BlockStateProperties.HANGING, true);
+    }
+
+    private static void put(ServerLevel level, BlockPos g, int dx, int dy, int dz, BlockState state) {
+        level.setBlock(g.offset(dx, dy, dz), state, 3);
     }
 
     private static void set(ServerLevel level, BlockPos at, BlockState state) {
@@ -407,11 +567,10 @@ public class ClaimBannerBlockEntity extends BlockEntity {
      * blocks of headroom on solid ground; falls back to directly beside the base.
      */
     private static BlockPos findSafeSpawn(ServerLevel level, BlockPos base) {
-        // Ring just beyond the 7x7 footprint.
         int[][] ring = {
-            {4, 0}, {-4, 0}, {0, 4}, {0, -4},
-            {4, 4}, {4, -4}, {-4, 4}, {-4, -4},
-            {5, 0}, {-5, 0}, {0, 5}, {0, -5}
+            {5, 0}, {-5, 0}, {0, 5}, {0, -5},
+            {5, 5}, {5, -5}, {-5, 5}, {-5, -5},
+            {6, 0}, {-6, 0}, {0, 6}, {0, -6}
         };
         for (int[] off : ring) {
             for (int dy = 2; dy >= -3; dy--) {
@@ -419,7 +578,7 @@ public class ClaimBannerBlockEntity extends BlockEntity {
                 if (isStandable(level, candidate)) return candidate;
             }
         }
-        return base.offset(4, 0, 0);
+        return base.offset(5, 0, 0);
     }
 
     /** Feet + head must be passable and the block below must be solid enough to stand on. */
