@@ -320,7 +320,7 @@ public final class HobbitHoleBuilder {
             for (int rt = -1; rt <= 1; rt++)
                 if (c.set(rt, 0, bk, Blocks.BROWN_CARPET.defaultBlockState())) placed++;
         if (c.set(-2, 0, 1, Blocks.POTTED_FERN.defaultBlockState())) placed++;
-        if (c.set(2, 0, 1, Blocks.POTTED_AZALEA_BUSH.defaultBlockState())) placed++;
+        if (c.set(2, 0, 1, Blocks.POTTED_AZALEA.defaultBlockState())) placed++;
 
         // Round rug + dining table with a cake and chairs that face it.
         for (int bk = 3; bk <= 5; bk++)
