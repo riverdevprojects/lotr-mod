@@ -193,7 +193,7 @@ public class ModBlocks {
 
     // ==================== SPECIAL ====================
     public static final DeferredBlock<RoundDoorBlock> HOBBIT_DOOR = BLOCKS.register("hobbit_door",
-            RoundDoorBlock::new);
+            () -> new RoundDoorBlock());
 
     public static final DeferredBlock<Block> VOLCANIC_ASH_BLOCK = BLOCKS.register("volcanic_ash_block",
             () -> new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.SAND)));
