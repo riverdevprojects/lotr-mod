@@ -42,7 +42,7 @@ public final class OrthancBuilder {
     /** Height of the fused shaft. */
     public static final int SHAFT_H = 112;
     /** Height of crown + horns above the shaft. */
-    public static final int HORN_H = 34;
+    public static final int HORN_H = 36;
     /** Spacing of protruding horizontal string-courses. */
     static final int TIER_STEP = 14;
     /** Spacing of interior floors. */
@@ -314,7 +314,7 @@ public final class OrthancBuilder {
         for (int hy = 0; hy < crownH; hy++) {
             int wy = origin.getY() + SHAFT_H + hy;
             if (wy > maxBuild) return placed;
-            int cs = Math.max(W_TOP, L_TOP - hy / 4);          // square half-size, tapering
+            int cs = Math.max(W_TOP - 1, L_TOP - hy / 2);      // square half-size, tapering to a neck
             for (int dx = -cs; dx <= cs; dx++) {
                 for (int dz = -cs; dz <= cs; dz++) {
                     int cheb = Math.max(Math.abs(dx), Math.abs(dz));
@@ -370,20 +370,20 @@ public final class OrthancBuilder {
         return placed;
     }
 
-    /** One thin blade-horn that leans outward along its diagonal and tapers to a barbed point. */
+    /** One thin blade-horn that rises nearly vertically, flaring only slightly near the tip. */
     private static int horn(ServerLevel level, BlockPos origin, int sx, int sz) {
         int placed = 0;
         final int maxBuild = level.getMaxBuildHeight() - 1;
         final int len = HORN_H;
-        final int d0 = L_TOP;       // spring from the square crown's corner
-        final int lean = 11;        // total outward splay
+        final int d0 = 4;           // spring from near the crown's neck
+        final int lean = 4;         // small outward flare, almost entirely at the very top
         for (int hy = 0; hy <= len; hy++) {
             double f = hy / (double) len;
-            int out = (int) Math.round(lean * Math.pow(f, 1.3));
+            int out = (int) Math.round(lean * Math.pow(f, 2.5)); // stay vertical, flare late
             int cx = sx * (d0 + out);
             int cz = sz * (d0 + out);
-            int hs = (f < 0.45) ? 1 : 0;                 // chunky base → single-block blade
-            int wy = origin.getY() + SHAFT_H + 2 + hy;
+            int hs = (f < 0.32) ? 1 : 0;                 // chunky base → continuous 1-wide spike
+            int wy = origin.getY() + SHAFT_H + 1 + hy;
             if (wy > maxBuild) break;
             for (int ax = -hs; ax <= hs; ax++) {
                 for (int az = -hs; az <= hs; az++) {
@@ -391,33 +391,22 @@ public final class OrthancBuilder {
                             pillarPalette(origin.getX() + cx + ax, wy, origin.getZ() + cz + az))) placed++;
                 }
             }
-            // Serrated outer edge: a jag every other course on the leading (diagonal) side.
-            if (hy % 2 == 0 && f > 0.2) {
-                if (set(level, origin.getX() + cx + sx, wy, origin.getZ() + cz + sz,
-                        pillarPalette(origin.getX() + cx + sx, wy, origin.getZ() + cz + sz))) placed++;
-            }
         }
         return placed;
     }
 
+    /** A small palantír dais seated on the crown floor between the four horns. */
     private static int buildPinnacle(ServerLevel level, BlockPos origin) {
         int placed = 0;
         final int maxBuild = level.getMaxBuildHeight() - 1;
-        int wy = origin.getY() + SHAFT_H + 2;
+        int wy = origin.getY() + SHAFT_H + 1; // sits on the solid crown floor
         if (wy > maxBuild) return 0;
-        int r = W_TOP - 1;
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dz = -r; dz <= r; dz++) {
-                if (set(level, origin.getX() + dx, wy, origin.getZ() + dz,
-                        Blocks.POLISHED_BLACKSTONE.defaultBlockState())) placed++;
-            }
-        }
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                if (set(level, origin.getX() + dx, wy + 1, origin.getZ() + dz, Blocks.OBSIDIAN.defaultBlockState())) placed++;
+                if (set(level, origin.getX() + dx, wy, origin.getZ() + dz, Blocks.OBSIDIAN.defaultBlockState())) placed++;
             }
         }
-        if (set(level, origin.getX(), wy + 2, origin.getZ(), Blocks.CRYING_OBSIDIAN.defaultBlockState())) placed++;
+        if (set(level, origin.getX(), wy + 1, origin.getZ(), Blocks.CRYING_OBSIDIAN.defaultBlockState())) placed++;
         return placed;
     }
 
