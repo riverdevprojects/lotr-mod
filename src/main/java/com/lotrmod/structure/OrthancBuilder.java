@@ -370,19 +370,20 @@ public final class OrthancBuilder {
         return placed;
     }
 
-    /** One thin blade-horn that rises nearly vertically, flaring only slightly near the tip. */
+    /** One broad blade-horn: thick at the crown, tapering smoothly to a point, rising nearly
+     *  vertically with only a gentle outward lean (kept smooth by the blade's width). */
     private static int horn(ServerLevel level, BlockPos origin, int sx, int sz) {
         int placed = 0;
         final int maxBuild = level.getMaxBuildHeight() - 1;
-        final int len = HORN_H;
-        final int d0 = 4;           // spring from near the crown's neck
-        final int lean = 4;         // small outward flare, almost entirely at the very top
+        final int len = 30;
+        final int d0 = 4;           // spring from the crown neck
+        final int lean = 4;         // gentle outward flare, mostly near the top
         for (int hy = 0; hy <= len; hy++) {
             double f = hy / (double) len;
-            int out = (int) Math.round(lean * Math.pow(f, 2.5)); // stay vertical, flare late
+            int out = (int) Math.round(lean * Math.pow(f, 1.6));   // stay vertical, flare late
             int cx = sx * (d0 + out);
             int cz = sz * (d0 + out);
-            int hs = (f < 0.32) ? 1 : 0;                 // chunky base → continuous 1-wide spike
+            int hs = (int) Math.round(2.0 * (1.0 - f));            // 5-wide base -> point, smooth taper
             int wy = origin.getY() + SHAFT_H + 1 + hy;
             if (wy > maxBuild) break;
             for (int ax = -hs; ax <= hs; ax++) {
