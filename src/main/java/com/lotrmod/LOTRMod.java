@@ -2,6 +2,7 @@ package com.lotrmod;
 
 import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
+import com.lotrmod.command.StructureCommand;
 import com.lotrmod.conquest.ConquestSystem;
 import com.lotrmod.item.ModCreativeTabs;
 import com.lotrmod.item.ModItems;
@@ -72,7 +73,8 @@ public class LOTRMod {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         MiddleEarthCommand.register(event.getDispatcher());
+        StructureCommand.register(event.getDispatcher());
         ConquestSystem.registerCommands(event.getDispatcher());
-        LOGGER.info("Registered /middleearth, /guild, /guilddebug commands");
+        LOGGER.info("Registered /middleearth, /structure, /guild, /guilddebug commands");
     }
 }

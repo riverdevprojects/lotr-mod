@@ -158,6 +158,7 @@ public class ModItems {
         ITEMS.register("silver_nightflower", () -> new BlockItem(ModBlocks.SILVER_NIGHTFLOWER.get(), new Item.Properties()));
 
         // Special
+        ITEMS.register("hobbit_door", () -> new BlockItem(ModBlocks.HOBBIT_DOOR.get(), new Item.Properties()));
         ITEMS.register("volcanic_ash_block", () -> new BlockItem(ModBlocks.VOLCANIC_ASH_BLOCK.get(), new Item.Properties()));
         ITEMS.register("riverbed_silt", () -> new BlockItem(ModBlocks.RIVERBED_SILT.get(), new Item.Properties()));
     }

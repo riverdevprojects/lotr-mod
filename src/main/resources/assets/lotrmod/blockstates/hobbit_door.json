@@ -1,0 +1,256 @@
+{
+  "variants": {
+    "col=0,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=0,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=0,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=1,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=1,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_knob"
+    },
+    "col=1,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=2,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=2,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=2,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel"
+    },
+    "col=0,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=2,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=2,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=2,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=0,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=0,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=0,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_knob",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 90
+    },
+    "col=0,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=2,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=2,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=2,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=0,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=0,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=0,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_knob",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 180
+    },
+    "col=0,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=2,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=2,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=2,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=0,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=0,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=0,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_knob",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/hobbit_door_panel",
+      "y": 270
+    },
+    "col=0,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=2,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    },
+    "col=2,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    },
+    "col=2,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    }
+  }
+}
