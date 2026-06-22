@@ -122,9 +122,9 @@
     ],
     [],
     [
+      "minecraft:patch_grass_plain",
       "minecraft:trees_meadow",
-      "minecraft:flower_meadow",
-      "minecraft:patch_grass_plain"
+      "minecraft:flower_meadow"
     ],
     []
   ]

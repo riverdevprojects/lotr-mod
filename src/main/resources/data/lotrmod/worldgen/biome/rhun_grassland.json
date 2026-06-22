@@ -111,8 +111,8 @@
     [],
     [
       "minecraft:patch_grass_savanna",
-      "minecraft:patch_dead_bush",
-      "minecraft:patch_tall_grass"
+      "minecraft:patch_tall_grass",
+      "minecraft:patch_dead_bush"
     ],
     []
   ]

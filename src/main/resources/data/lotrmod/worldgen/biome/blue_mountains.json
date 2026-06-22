@@ -98,8 +98,8 @@
     ],
     [],
     [
-      "minecraft:trees_grove",
-      "minecraft:patch_grass_normal"
+      "minecraft:patch_grass_normal",
+      "minecraft:trees_grove"
     ],
     [
       "minecraft:freeze_top_layer"

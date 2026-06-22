@@ -110,8 +110,8 @@
     ],
     [],
     [
-      "minecraft:patch_dead_bush",
       "minecraft:patch_grass_savanna",
+      "minecraft:patch_dead_bush",
       "lotrmod:lotr_tumbleweed_placed"
     ],
     []

@@ -110,10 +110,10 @@
     ],
     [],
     [
-      "minecraft:trees_jungle",
       "minecraft:bamboo_vegetation",
-      "minecraft:patch_melon",
-      "minecraft:patch_grass_jungle"
+      "minecraft:patch_grass_jungle",
+      "minecraft:trees_jungle",
+      "minecraft:patch_melon"
     ],
     []
   ]

@@ -104,10 +104,10 @@
     ],
     [],
     [
-      "minecraft:trees_taiga",
+      "minecraft:patch_grass_forest",
       "minecraft:patch_large_fern",
-      "minecraft:brown_mushroom_normal",
-      "minecraft:patch_grass_forest"
+      "minecraft:trees_taiga",
+      "minecraft:brown_mushroom_normal"
     ],
     []
   ]

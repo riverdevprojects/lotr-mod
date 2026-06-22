@@ -104,9 +104,9 @@
     ],
     [],
     [
+      "minecraft:patch_grass_savanna",
       "minecraft:trees_savanna",
       "minecraft:patch_dead_bush",
-      "minecraft:patch_grass_savanna",
       "lotrmod:lotr_tumbleweed_placed"
     ],
     []

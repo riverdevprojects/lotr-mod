@@ -110,9 +110,9 @@
     ],
     [],
     [
-      "minecraft:patch_pumpkin",
+      "minecraft:patch_grass_plain",
       "minecraft:flower_default",
-      "minecraft:patch_grass_plain"
+      "minecraft:patch_pumpkin"
     ],
     []
   ]

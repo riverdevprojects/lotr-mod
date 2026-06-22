@@ -104,9 +104,9 @@
     ],
     [],
     [
+      "minecraft:patch_grass_taiga_2",
       "minecraft:trees_taiga",
-      "minecraft:red_mushroom_normal",
-      "minecraft:patch_grass_taiga_2"
+      "minecraft:red_mushroom_normal"
     ],
     []
   ]

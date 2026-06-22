@@ -98,8 +98,8 @@
     ],
     [],
     [
-      "minecraft:flower_default",
-      "minecraft:patch_grass_normal"
+      "minecraft:patch_grass_normal",
+      "minecraft:flower_default"
     ],
     []
   ]

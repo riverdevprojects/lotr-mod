@@ -116,9 +116,9 @@
     ],
     [],
     [
+      "minecraft:patch_grass_forest",
       "minecraft:trees_birch",
-      "minecraft:forest_flowers",
-      "minecraft:patch_grass_forest"
+      "minecraft:forest_flowers"
     ],
     []
   ]

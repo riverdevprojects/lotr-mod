@@ -104,10 +104,10 @@
     ],
     [],
     [
-      "minecraft:trees_birch",
+      "minecraft:patch_grass_forest",
       "minecraft:patch_large_fern",
-      "minecraft:red_mushroom_normal",
-      "minecraft:patch_grass_forest"
+      "minecraft:trees_birch",
+      "minecraft:red_mushroom_normal"
     ],
     []
   ]
