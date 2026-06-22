@@ -101,8 +101,10 @@ public class ModBlocks {
     public static final DeferredBlock<Block> CATTAILS = BLOCKS.register("cattails",
             () -> new DoublePlantBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.TALL_GRASS)));
 
+    // DeadBushBlock so tumbleweeds survive on sand, red sand and coarse dirt
+    // (Harad desert/savanna and the eastern steppes) — not just grass/dirt.
     public static final DeferredBlock<Block> TUMBLEWEED = BLOCKS.register("tumbleweed",
-            () -> new TallGrassBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DEAD_BUSH)));
+            () -> new DeadBushBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DEAD_BUSH)));
 
     public static final DeferredBlock<Block> VINES = BLOCKS.register("lotr_vines",
             () -> new VineBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.VINE)));

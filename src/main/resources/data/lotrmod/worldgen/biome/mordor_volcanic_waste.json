@@ -1,14 +1,14 @@
 {
   "has_precipitation": false,
-  "temperature": 1.5,
+  "temperature": 2.0,
   "downfall": 0.0,
   "effects": {
-    "sky_color": 7023660,
-    "fog_color": 4004378,
-    "water_color": 2823445,
-    "water_fog_color": 655874,
-    "grass_color": 3810840,
-    "foliage_color": 4005908,
+    "sky_color": 5583406,
+    "fog_color": 3810850,
+    "water_color": 3351324,
+    "water_fog_color": 1445384,
+    "grass_color": 3813158,
+    "foliage_color": 3484450,
     "mood_sound": {
       "sound": "minecraft:ambient.cave",
       "tick_delay": 6000,
@@ -20,19 +20,36 @@
     "monster": [
       {
         "type": "minecraft:zombie",
-        "weight": 100,
-        "minCount": 4,
+        "weight": 80,
+        "minCount": 3,
+        "maxCount": 5
+      },
+      {
+        "type": "minecraft:skeleton",
+        "weight": 60,
+        "minCount": 2,
         "maxCount": 4
+      },
+      {
+        "type": "minecraft:spider",
+        "weight": 40,
+        "minCount": 1,
+        "maxCount": 2
+      },
+      {
+        "type": "minecraft:creeper",
+        "weight": 50,
+        "minCount": 1,
+        "maxCount": 2
+      },
+      {
+        "type": "minecraft:husk",
+        "weight": 30,
+        "minCount": 1,
+        "maxCount": 3
       }
     ],
-    "creature": [
-      {
-        "type": "minecraft:pig",
-        "weight": 10,
-        "minCount": 4,
-        "maxCount": 4
-      }
-    ]
+    "creature": []
   },
   "spawn_costs": {},
   "carvers": {

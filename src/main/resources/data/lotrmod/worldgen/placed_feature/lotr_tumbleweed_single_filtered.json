@@ -1,0 +1,13 @@
+{
+  "feature": "lotrmod:lotr_tumbleweed_single",
+  "placement": [
+    {
+      "type": "minecraft:block_predicate_filter",
+      "predicate": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air",
+        "offset": [0, 0, 0]
+      }
+    }
+  ]
+}

@@ -1,14 +1,14 @@
 {
-  "has_precipitation": true,
-  "temperature": 0.8,
-  "downfall": 0.5,
+  "has_precipitation": false,
+  "temperature": 1.0,
+  "downfall": 0.15,
   "effects": {
-    "sky_color": 7907327,
-    "fog_color": 12638463,
-    "water_color": 4159204,
-    "water_fog_color": 329011,
-    "grass_color": 7979098,
-    "foliage_color": 5877296,
+    "sky_color": 13354910,
+    "fog_color": 14603436,
+    "water_color": 4501493,
+    "water_fog_color": 1056822,
+    "grass_color": 10259526,
+    "foliage_color": 9207352,
     "mood_sound": {
       "sound": "minecraft:ambient.cave",
       "tick_delay": 6000,
@@ -19,17 +19,47 @@
   "spawners": {
     "monster": [
       {
-        "type": "minecraft:zombie",
-        "weight": 100,
-        "minCount": 4,
+        "type": "minecraft:husk",
+        "weight": 70,
+        "minCount": 2,
         "maxCount": 4
+      },
+      {
+        "type": "minecraft:spider",
+        "weight": 30,
+        "minCount": 1,
+        "maxCount": 1
+      },
+      {
+        "type": "minecraft:skeleton",
+        "weight": 30,
+        "minCount": 1,
+        "maxCount": 2
+      },
+      {
+        "type": "minecraft:creeper",
+        "weight": 30,
+        "minCount": 1,
+        "maxCount": 1
       }
     ],
     "creature": [
       {
-        "type": "minecraft:pig",
-        "weight": 10,
-        "minCount": 4,
+        "type": "minecraft:horse",
+        "weight": 12,
+        "minCount": 2,
+        "maxCount": 6
+      },
+      {
+        "type": "minecraft:sheep",
+        "weight": 16,
+        "minCount": 2,
+        "maxCount": 4
+      },
+      {
+        "type": "minecraft:cow",
+        "weight": 14,
+        "minCount": 2,
         "maxCount": 4
       }
     ]
@@ -80,7 +110,9 @@
     ],
     [],
     [
-      "minecraft:patch_grass_normal"
+      "minecraft:patch_dead_bush",
+      "minecraft:patch_grass_savanna",
+      "lotrmod:lotr_tumbleweed_placed"
     ],
     []
   ]
