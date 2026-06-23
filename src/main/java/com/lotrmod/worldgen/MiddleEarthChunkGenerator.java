@@ -47,6 +47,9 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private static final int SEA_LEVEL = 63;
     // Terrain is always kept above this — no water, no sub-surface voids
     private static final int MIN_TERRAIN_HEIGHT = 65;
+    // Only plateau-noise values above this threshold form mesas. Higher = rarer
+    // plateaus (more flat ground between them).
+    private static final double PLATEAU_THRESHOLD = 0.66;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource, settings);
@@ -276,9 +279,14 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         double ridge = 1.0 - Math.abs(ridgeRaw); // 0 = valley, 1 = ridge crest
         ridge = ridge * ridge; // sharpen
 
-        // ── Plateau / mesa term: terraced low-frequency noise → flat tops, cliffs ─
-        double plateauRaw = plateauNoise.getValue(worldX / 340.0, worldZ / 340.0, false);
-        double plateau = terracePlateau((plateauRaw + 1.0) / 2.0); // 0..~0.75 in flat steps
+        // ── Plateau / mesa term: only the highest parts of a low-frequency field
+        //    rise into terraced mesas, so most of the desert/steppe stays flat
+        //    with the occasional plateau rather than continuous badlands. ─────────
+        double plateauField = (plateauNoise.getValue(worldX / 360.0, worldZ / 360.0, false) + 1.0) / 2.0;
+        double plateau = 0.0;
+        if (plateauField > PLATEAU_THRESHOLD) {
+            plateau = terracePlateau((plateauField - PLATEAU_THRESHOLD) / (1.0 - PLATEAU_THRESHOLD));
+        }
 
         // ── Get biome modifiers at this location ──────────────────────────────
         // Use a 96-block grid + smoothstep to avoid visible grid artefacts
@@ -453,7 +461,7 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             m.pvScale        =  6.0;   // gentle rolling on the flats
             m.ridgeScale     =  0.0;
             m.detailScale    =  3.0;
-            m.plateauScale   = 48.0;   // the mesas themselves
+            m.plateauScale   = 44.0;   // the mesas themselves
 
         } else if (isFlatBiome(biome)) {
             // Plains — still rolling, just less dramatic than hills

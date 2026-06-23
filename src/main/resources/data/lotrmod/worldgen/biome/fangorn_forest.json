@@ -106,7 +106,7 @@
     [
       "minecraft:patch_grass_forest",
       "minecraft:patch_large_fern",
-      "minecraft:trees_taiga",
+      "lotrmod:lotr_spruce_forest_placed",
       "minecraft:brown_mushroom_normal"
     ],
     []

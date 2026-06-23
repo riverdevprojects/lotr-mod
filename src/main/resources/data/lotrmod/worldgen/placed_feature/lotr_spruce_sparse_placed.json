@@ -1,0 +1,17 @@
+{
+  "feature": "minecraft:spruce",
+  "placement": [
+    { "type": "minecraft:count", "count": 2 },
+    { "type": "minecraft:in_square" },
+    { "type": "minecraft:heightmap", "heightmap": "WORLD_SURFACE_WG" },
+    { "type": "minecraft:biome" },
+    {
+      "type": "minecraft:block_predicate_filter",
+      "predicate": {
+        "type": "minecraft:would_survive",
+        "state": { "Name": "minecraft:spruce_sapling" },
+        "offset": [0, 0, 0]
+      }
+    }
+  ]
+}

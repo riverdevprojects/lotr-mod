@@ -99,7 +99,7 @@
     [],
     [
       "minecraft:patch_grass_normal",
-      "minecraft:trees_grove"
+      "lotrmod:lotr_spruce_sparse_placed"
     ],
     [
       "minecraft:freeze_top_layer"
