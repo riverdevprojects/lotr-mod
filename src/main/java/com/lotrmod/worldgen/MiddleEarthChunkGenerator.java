@@ -282,7 +282,14 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         // ── Plateau / mesa term: only the highest parts of a low-frequency field
         //    rise into terraced mesas, so most of the desert/steppe stays flat
         //    with the occasional plateau rather than continuous badlands. ─────────
-        double plateauField = (plateauNoise.getValue(worldX / 360.0, worldZ / 360.0, false) + 1.0) / 2.0;
+        //    Domain-warp the sample coords and add high-frequency roughness so the
+        //    terraces are ragged, natural buttes instead of concentric "cake" rings.
+        double warpScale = 1.0 / 85.0;
+        double wx = detailNoise.getValue(worldX * warpScale, worldZ * warpScale, false) * 45.0;
+        double wz = detailNoise.getValue((worldX + 5000) * warpScale, (worldZ + 5000) * warpScale, false) * 45.0;
+        double pf = plateauNoise.getValue((worldX + wx) / 360.0, (worldZ + wz) / 360.0, false);
+        pf += plateauNoise.getValue(worldX / 60.0, worldZ / 60.0, false) * 0.15; // break up contour edges
+        double plateauField = Math.max(0.0, Math.min(1.0, (pf + 1.0) / 2.0));
         double plateau = 0.0;
         if (plateauField > PLATEAU_THRESHOLD) {
             plateau = terracePlateau((plateauField - PLATEAU_THRESHOLD) / (1.0 - PLATEAU_THRESHOLD));
