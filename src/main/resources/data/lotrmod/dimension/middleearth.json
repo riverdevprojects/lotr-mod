@@ -5,8 +5,8 @@
     "biome_source": {
       "type": "lotrmod:middleearth",
       "ocean_biome": "minecraft:ocean",
-      "land_biome": "minecraft:plains",
-      "beach_biome": "minecraft:beach",
+      "land_biome": "lotrmod:eriador_plains",
+      "beach_biome": "lotrmod:lindon_meadow",
       "possible_biomes": [
         "lotrmod:lindon_beech_forest",
         "lotrmod:lindon_meadow",
