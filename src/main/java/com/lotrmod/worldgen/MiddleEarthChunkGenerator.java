@@ -39,7 +39,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private final PerlinSimplexNoise peaksValleysNoise;  // Local peaks and valleys
     private final PerlinSimplexNoise detailNoise;        // Surface fine detail
     private final PerlinSimplexNoise ridgeNoise;         // Mountain ridgelines
-    private final PerlinSimplexNoise plateauNoise;       // Flat-topped mesa / plateau steps
 
     // Used for biome boundary jitter and landmask coastline noise
     private final PerlinSimplexNoise coastlineNoise;
@@ -47,9 +46,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private static final int SEA_LEVEL = 63;
     // Terrain is always kept above this — no water, no sub-surface voids
     private static final int MIN_TERRAIN_HEIGHT = 65;
-    // Only plateau-noise values above this threshold form mesas. Higher = rarer
-    // plateaus (more flat ground between them).
-    private static final double PLATEAU_THRESHOLD = 0.66;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
         super(biomeSource, settings);
@@ -60,7 +56,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         this.peaksValleysNoise = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
         this.detailNoise       = new PerlinSimplexNoise(r1, List.of(0, 1, 2));
         this.ridgeNoise        = new PerlinSimplexNoise(r1, List.of(0, 1, 2, 3));
-        this.plateauNoise      = new PerlinSimplexNoise(r1, List.of(0, 1, 2));
 
         RandomSource r2 = RandomSource.create(98765L);
         this.coastlineNoise = new PerlinSimplexNoise(r2, List.of(0, 1, 2));
@@ -279,22 +274,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         double ridge = 1.0 - Math.abs(ridgeRaw); // 0 = valley, 1 = ridge crest
         ridge = ridge * ridge; // sharpen
 
-        // ── Plateau / mesa term: only the highest parts of a low-frequency field
-        //    rise into terraced mesas, so most of the desert/steppe stays flat
-        //    with the occasional plateau rather than continuous badlands. ─────────
-        //    Domain-warp the sample coords and add high-frequency roughness so the
-        //    terraces are ragged, natural buttes instead of concentric "cake" rings.
-        double warpScale = 1.0 / 85.0;
-        double wx = detailNoise.getValue(worldX * warpScale, worldZ * warpScale, false) * 45.0;
-        double wz = detailNoise.getValue((worldX + 5000) * warpScale, (worldZ + 5000) * warpScale, false) * 45.0;
-        double pf = plateauNoise.getValue((worldX + wx) / 360.0, (worldZ + wz) / 360.0, false);
-        pf += plateauNoise.getValue(worldX / 60.0, worldZ / 60.0, false) * 0.15; // break up contour edges
-        double plateauField = Math.max(0.0, Math.min(1.0, (pf + 1.0) / 2.0));
-        double plateau = 0.0;
-        if (plateauField > PLATEAU_THRESHOLD) {
-            plateau = terracePlateau((plateauField - PLATEAU_THRESHOLD) / (1.0 - PLATEAU_THRESHOLD));
-        }
-
         // ── Get biome modifiers at this location ──────────────────────────────
         // Use a 96-block grid + smoothstep to avoid visible grid artefacts
         final int GRID = 96;
@@ -315,7 +294,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         double pvScale          = bilinearInterp(m00.pvScale,          m10.pvScale,          m01.pvScale,          m11.pvScale,          fx, fz);
         double ridgeScale       = bilinearInterp(m00.ridgeScale,       m10.ridgeScale,       m01.ridgeScale,       m11.ridgeScale,       fx, fz);
         double detailScale      = bilinearInterp(m00.detailScale,      m10.detailScale,      m01.detailScale,      m11.detailScale,      fx, fz);
-        double plateauScale     = bilinearInterp(m00.plateauScale,     m10.plateauScale,     m01.plateauScale,     m11.plateauScale,     fx, fz);
 
         // ── Combine layers ────────────────────────────────────────────────────
         double height = SEA_LEVEL
@@ -324,7 +302,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 + (1.0 - erosion) * erosionScale   // high erosion = flat = subtract less
                 + pv * pvScale
                 + ridge * ridgeScale
-                + plateau * plateauScale
                 + detail * detailScale;
 
         // ── Landmask shapes the broad Middle-earth geography ──────────────────
@@ -350,23 +327,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
 
     private double smoothstep(double t) {
         return t * t * (3.0 - 2.0 * t);
-    }
-
-    /**
-     * Terraces a smooth 0..1 field into discrete flat steps with slightly
-     * softened cliff edges, producing flat-topped mesas/plateaus where the
-     * field crosses a step boundary. Used only for plateau biomes (Harad,
-     * eastern steppes) via plateauScale.
-     */
-    private double terracePlateau(double v) {
-        final double STEPS = 4.0;
-        double scaled = v * STEPS;
-        double base = Math.floor(scaled);
-        double frac = scaled - base;          // 0..1 within the current step
-        // Keep most of the step flat, but smooth the top sliver into a short
-        // slope so cliff faces aren't perfectly vertical everywhere.
-        double edge = frac < 0.85 ? 0.0 : smoothstep((frac - 0.85) / 0.15);
-        return (base + edge) / STEPS;         // 0 .. ~0.75
     }
 
     /**
@@ -419,7 +379,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         double pvScale        = 18.0;  // peaks-and-valleys amplitude
         double ridgeScale     =  0.0;  // mountain ridges (0 for flat/hilly biomes)
         double detailScale    =  4.0;  // surface detail amplitude
-        double plateauScale   =  0.0;  // flat-topped mesa amplitude (0 = none)
     }
 
     private BiomeModifiers getBiomeModifiersAt(int worldX, int worldZ) {
@@ -459,17 +418,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
             m.ridgeScale     =  0.0;
             m.detailScale    =  5.0;
 
-        } else if (isPlateauBiome(biome)) {
-            // Harad & the eastern steppes: broad flat ground broken by dramatic
-            // flat-topped mesas and plateaus rising out of the plain.
-            m.baseOffset     =  8.0;
-            m.continentScale = 10.0;
-            m.erosionScale   =  6.0;
-            m.pvScale        =  6.0;   // gentle rolling on the flats
-            m.ridgeScale     =  0.0;
-            m.detailScale    =  3.0;
-            m.plateauScale   = 44.0;   // the mesas themselves
-
         } else if (isFlatBiome(biome)) {
             // Plains — still rolling, just less dramatic than hills
             m.baseOffset     = 10.0;
@@ -499,15 +447,6 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         }
 
         return m;
-    }
-
-    private boolean isPlateauBiome(LOTRBiome biome) {
-        return switch (biome) {
-            case HARAD_DESERT, HARAD_SAVANNA,
-                 RHUN_SHRUBLANDS, EASTERN_RHOVANIAN_SHRUBLANDS,
-                 DEAD_LANDS_EMPTY -> true;
-            default -> false;
-        };
     }
 
     private boolean isFlatBiome(LOTRBiome biome) {
