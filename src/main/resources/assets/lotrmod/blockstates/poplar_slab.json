@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "lotrmod:block/poplar_slab"
+    },
+    "type=top": {
+      "model": "lotrmod:block/poplar_slab_top"
+    },
+    "type=double": {
+      "model": "lotrmod:block/poplar_planks"
+    }
+  }
+}

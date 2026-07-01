@@ -116,6 +116,12 @@
     ],
     [],
     [
+      "lotrmod:oak_tree_placed",
+      "lotrmod:ash_tree_placed",
+      "lotrmod:elm_tree_placed",
+      "lotrmod:birch_tree_placed",
+      "lotrmod:aspen_tree_placed",
+      "lotrmod:rowan_tree_placed",
       "minecraft:patch_grass_forest",
       "minecraft:trees_birch",
       "minecraft:patch_berry_common"

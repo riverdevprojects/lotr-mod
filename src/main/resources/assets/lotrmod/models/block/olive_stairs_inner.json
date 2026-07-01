@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "lotrmod:block/olive_planks",
+    "top": "lotrmod:block/olive_planks",
+    "side": "lotrmod:block/olive_planks"
+  }
+}

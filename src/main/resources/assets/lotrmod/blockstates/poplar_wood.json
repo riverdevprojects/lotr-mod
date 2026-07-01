@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "lotrmod:block/poplar_wood",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "lotrmod:block/poplar_wood"
+    },
+    "axis=z": {
+      "model": "lotrmod:block/poplar_wood",
+      "x": 90
+    }
+  }
+}

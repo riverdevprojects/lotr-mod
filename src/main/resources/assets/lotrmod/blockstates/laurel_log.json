@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "lotrmod:block/laurel_log",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "lotrmod:block/laurel_log"
+    },
+    "axis=z": {
+      "model": "lotrmod:block/laurel_log",
+      "x": 90
+    }
+  }
+}

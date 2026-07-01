@@ -38,6 +38,12 @@ public class ModItems {
         registerWoodTypeItems("frozen_pine");
         registerWoodTypeItems("deadwood");
         registerWoodTypeItems("burnt_wood");
+        registerWoodTypeItems("spruce");
+        registerWoodTypeItems("aspen");
+        registerWoodTypeItems("holly");
+        registerWoodTypeItems("poplar");
+        registerWoodTypeItems("laurel");
+        registerWoodTypeItems("mallorn");
     }
 
     // ==================== SPECIAL ITEMS ====================
@@ -131,6 +137,13 @@ public class ModItems {
         ITEMS.register("dead_leaves", () -> new BlockItem(ModBlocks.DEAD_LEAVES.get(), new Item.Properties()));
         ITEMS.register("frozen_leaves", () -> new BlockItem(ModBlocks.FROZEN_LEAVES.get(), new Item.Properties()));
         ITEMS.register("lotr_acacia_leaves", () -> new BlockItem(ModBlocks.ACACIA_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("elm_leaves", () -> new BlockItem(ModBlocks.ELM_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("lotr_spruce_leaves", () -> new BlockItem(ModBlocks.SPRUCE_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("aspen_leaves", () -> new BlockItem(ModBlocks.ASPEN_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("holly_leaves", () -> new BlockItem(ModBlocks.HOLLY_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("poplar_leaves", () -> new BlockItem(ModBlocks.POPLAR_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("laurel_leaves", () -> new BlockItem(ModBlocks.LAUREL_LEAVES.get(), new Item.Properties()));
+        ITEMS.register("mallorn_leaves", () -> new BlockItem(ModBlocks.MALLORN_LEAVES.get(), new Item.Properties()));
         ITEMS.register("flowering_beech_leaves", () -> new BlockItem(ModBlocks.FLOWERING_BEECH_LEAVES.get(), new Item.Properties()));
         ITEMS.register("flowering_white_beech_leaves", () -> new BlockItem(ModBlocks.FLOWERING_WHITE_BEECH_LEAVES.get(), new Item.Properties()));
         ITEMS.register("flowering_maple_leaves", () -> new BlockItem(ModBlocks.FLOWERING_MAPLE_LEAVES.get(), new Item.Properties()));

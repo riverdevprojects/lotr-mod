@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_bottom_left_open",
+  "textures": {
+    "top": "lotrmod:block/poplar_door_top",
+    "bottom": "lotrmod:block/poplar_door_bottom"
+  }
+}

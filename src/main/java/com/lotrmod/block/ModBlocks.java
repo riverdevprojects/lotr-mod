@@ -44,6 +44,13 @@ public class ModBlocks {
         registerWoodType("frozen_pine");
         registerWoodType("deadwood");
         registerWoodType("burnt_wood");
+        // Additional Middle-earth trees (custom models/structures)
+        registerWoodType("spruce"); // LOTR spruce, not vanilla
+        registerWoodType("aspen");
+        registerWoodType("holly");
+        registerWoodType("poplar"); // white poplar
+        registerWoodType("laurel");
+        registerWoodType("mallorn"); // Lothlorien golden tree
     }
 
     // ==================== STONE TYPES ====================
@@ -141,6 +148,22 @@ public class ModBlocks {
             () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.SPRUCE_LEAVES)));
     public static final DeferredBlock<LeavesBlock> ACACIA_LEAVES = BLOCKS.register("lotr_acacia_leaves",
             () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.ACACIA_LEAVES)));
+
+    // Leaves for the additional Middle-earth trees
+    public static final DeferredBlock<LeavesBlock> ELM_LEAVES = BLOCKS.register("elm_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> SPRUCE_LEAVES = BLOCKS.register("lotr_spruce_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.SPRUCE_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> ASPEN_LEAVES = BLOCKS.register("aspen_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.BIRCH_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> HOLLY_LEAVES = BLOCKS.register("holly_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DARK_OAK_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> POPLAR_LEAVES = BLOCKS.register("poplar_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.BIRCH_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> LAUREL_LEAVES = BLOCKS.register("laurel_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DARK_OAK_LEAVES)));
+    public static final DeferredBlock<LeavesBlock> MALLORN_LEAVES = BLOCKS.register("mallorn_leaves",
+            () -> new LeavesBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.BIRCH_LEAVES)));
 
     // Flowering variants (5 types)
     public static final DeferredBlock<LeavesBlock> FLOWERING_BEECH_LEAVES = BLOCKS.register("flowering_beech_leaves",

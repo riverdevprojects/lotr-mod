@@ -116,6 +116,8 @@
     ],
     [],
     [
+      "lotrmod:laurel_tree_placed",
+      "lotrmod:mallorn_tree_placed",
       "minecraft:patch_grass_forest",
       "minecraft:trees_flower_forest",
       "minecraft:flower_flower_forest"

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "lotrmod:block/poplar_log",
+    "side": "lotrmod:block/poplar_log"
+  }
+}

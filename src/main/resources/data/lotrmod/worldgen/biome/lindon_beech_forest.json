@@ -116,6 +116,7 @@
     ],
     [],
     [
+      "lotrmod:birch_tree_placed",
       "minecraft:patch_grass_forest",
       "minecraft:trees_birch",
       "minecraft:forest_flowers"

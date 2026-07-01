@@ -98,6 +98,8 @@
     ],
     [],
     [
+      "lotrmod:willow_tree_placed",
+      "lotrmod:poplar_tree_placed",
       "minecraft:patch_tall_grass",
       "minecraft:patch_sugar_cane"
     ],

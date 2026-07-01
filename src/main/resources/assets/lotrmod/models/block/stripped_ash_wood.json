@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "lotrmod:block/stripped_ash_log",
+    "side": "lotrmod:block/stripped_ash_log"
+  }
+}

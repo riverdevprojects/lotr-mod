@@ -98,6 +98,7 @@
     ],
     [],
     [
+      "lotrmod:pine_tree_placed",
       "minecraft:patch_grass_normal",
       "minecraft:flower_default"
     ],

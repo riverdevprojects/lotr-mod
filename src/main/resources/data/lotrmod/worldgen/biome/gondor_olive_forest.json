@@ -116,6 +116,8 @@
     ],
     [],
     [
+      "lotrmod:olive_tree_placed",
+      "lotrmod:laurel_tree_placed",
       "minecraft:patch_grass_plain",
       "minecraft:trees_plains",
       "minecraft:flower_default"

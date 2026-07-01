@@ -122,6 +122,11 @@
     ],
     [],
     [
+      "lotrmod:oak_tree_placed",
+      "lotrmod:pine_tree_placed",
+      "lotrmod:aspen_tree_placed",
+      "lotrmod:holly_tree_placed",
+      "lotrmod:rowan_tree_placed",
       "minecraft:patch_grass_normal",
       "minecraft:flower_default"
     ],

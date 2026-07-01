@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "lotrmod:block/pine_slab"
+    },
+    "type=top": {
+      "model": "lotrmod:block/pine_slab_top"
+    },
+    "type=double": {
+      "model": "lotrmod:block/pine_planks"
+    }
+  }
+}

@@ -98,6 +98,9 @@
     ],
     [],
     [
+      "lotrmod:pine_tree_placed",
+      "lotrmod:spruce_tree_placed",
+      "lotrmod:rowan_tree_placed",
       "minecraft:patch_grass_normal",
       "lotrmod:lotr_spruce_sparse_placed"
     ],

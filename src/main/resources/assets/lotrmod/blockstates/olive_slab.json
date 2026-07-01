@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "lotrmod:block/olive_slab"
+    },
+    "type=top": {
+      "model": "lotrmod:block/olive_slab_top"
+    },
+    "type=double": {
+      "model": "lotrmod:block/olive_planks"
+    }
+  }
+}

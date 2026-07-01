@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "lotrmod:block/olive_log",
+    "side": "lotrmod:block/olive_log"
+  }
+}

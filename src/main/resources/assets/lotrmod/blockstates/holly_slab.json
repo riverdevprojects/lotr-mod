@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "lotrmod:block/holly_slab"
+    },
+    "type=top": {
+      "model": "lotrmod:block/holly_slab_top"
+    },
+    "type=double": {
+      "model": "lotrmod:block/holly_planks"
+    }
+  }
+}

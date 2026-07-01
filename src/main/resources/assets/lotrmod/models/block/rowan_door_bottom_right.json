@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_bottom_right",
+  "textures": {
+    "top": "lotrmod:block/rowan_door_top",
+    "bottom": "lotrmod:block/rowan_door_bottom"
+  }
+}

@@ -104,6 +104,7 @@
     ],
     [],
     [
+      "lotrmod:ash_tree_placed",
       "minecraft:patch_grass_taiga_2",
       "lotrmod:lotr_spruce_forest_placed",
       "minecraft:red_mushroom_normal"

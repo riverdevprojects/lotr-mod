@@ -122,6 +122,7 @@
     ],
     [],
     [
+      "lotrmod:aspen_tree_placed",
       "minecraft:patch_grass_plain",
       "minecraft:trees_meadow",
       "minecraft:flower_meadow"

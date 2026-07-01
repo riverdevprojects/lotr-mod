@@ -104,6 +104,8 @@
     ],
     [],
     [
+      "lotrmod:oak_tree_placed",
+      "lotrmod:ash_tree_placed",
       "minecraft:patch_grass_forest",
       "minecraft:patch_large_fern",
       "minecraft:trees_birch",
