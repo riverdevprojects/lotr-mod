@@ -1,14 +1,14 @@
 {
   "has_precipitation": true,
-  "temperature": 0.7,
-  "downfall": 0.7,
+  "temperature": 0.8,
+  "downfall": 0.5,
   "effects": {
-    "sky_color": 8959968,
-    "fog_color": 13623528,
-    "water_color": 4159204,
-    "water_fog_color": 329011,
-    "grass_color": 7319626,
-    "foliage_color": 5219886,
+    "sky_color": 8900331,
+    "fog_color": 16115411,
+    "water_color": 6271976,
+    "water_fog_color": 3833272,
+    "grass_color": 10145074,
+    "foliage_color": 16766720,
     "mood_sound": {
       "sound": "minecraft:ambient.cave",
       "tick_delay": 6000,
@@ -19,53 +19,17 @@
   "spawners": {
     "monster": [
       {
-        "type": "minecraft:spider",
-        "weight": 30,
-        "minCount": 1,
-        "maxCount": 1
-      },
-      {
         "type": "minecraft:zombie",
-        "weight": 60,
-        "minCount": 2,
+        "weight": 100,
+        "minCount": 4,
         "maxCount": 4
-      },
-      {
-        "type": "minecraft:skeleton",
-        "weight": 40,
-        "minCount": 1,
-        "maxCount": 2
-      },
-      {
-        "type": "minecraft:creeper",
-        "weight": 40,
-        "minCount": 1,
-        "maxCount": 1
       }
     ],
     "creature": [
       {
-        "type": "minecraft:wolf",
+        "type": "minecraft:pig",
         "weight": 10,
-        "minCount": 2,
-        "maxCount": 4
-      },
-      {
-        "type": "minecraft:fox",
-        "weight": 8,
-        "minCount": 2,
-        "maxCount": 4
-      },
-      {
-        "type": "minecraft:rabbit",
-        "weight": 10,
-        "minCount": 2,
-        "maxCount": 3
-      },
-      {
-        "type": "minecraft:chicken",
-        "weight": 10,
-        "minCount": 2,
+        "minCount": 4,
         "maxCount": 4
       }
     ]
@@ -116,9 +80,9 @@
     ],
     [],
     [
-      "minecraft:patch_grass_forest",
       "minecraft:trees_birch",
-      "minecraft:forest_flowers"
+      "minecraft:forest_flowers",
+      "minecraft:patch_grass_forest"
     ],
     []
   ]
