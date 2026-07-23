@@ -194,6 +194,45 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
         // Vanilla carvers (cave, canyon, extra_underground) defined in biome JSONs.
         // aquifers_enabled=false in noise settings ensures no water spawns in carved voids.
         super.applyCarvers(level, seed, randomState, biomeManager, structureManager, chunk, step);
+
+        // Carvers can gouge the shallow ocean seabed and delete surface water,
+        // leaving the water one block low (visible "divots"). Re-flood any air a
+        // carver opened up at or below sea level in ocean columns.
+        refloodOcean(chunk);
+    }
+
+    /**
+     * Restores ocean water that carvers removed. For every submerged column,
+     * fills contiguous air from sea level downward with water until it reaches
+     * the seabed, so the sea surface stays flat at {@link #SEA_LEVEL}.
+     */
+    private void refloodOcean(ChunkAccess chunk) {
+        ChunkPos chunkPos = chunk.getPos();
+        int startX = chunkPos.getMinBlockX();
+        int startZ = chunkPos.getMinBlockZ();
+        int minY = chunk.getMinBuildHeight();
+
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                int worldX = startX + x;
+                int worldZ = startZ + z;
+
+                // Only ocean columns have water to restore
+                if (getTerrainHeight(worldX, worldZ) >= SEA_LEVEL) continue;
+
+                for (int y = SEA_LEVEL; y > minY; y--) {
+                    pos.set(worldX, y, worldZ);
+                    BlockState state = chunk.getBlockState(pos);
+                    if (state.isAir()) {
+                        chunk.setBlockState(pos, Blocks.WATER.defaultBlockState(), false);
+                    } else if (!state.is(Blocks.WATER)) {
+                        break; // reached the solid seabed
+                    }
+                }
+            }
+        }
     }
 
     @Override
