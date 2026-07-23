@@ -3,7 +3,8 @@ package com.lotrmod;
 import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.command.StructureCommand;
-import com.lotrmod.conquest.ConquestSystem;
+// Conquest system disabled — kept in the codebase but not registered into the game.
+// import com.lotrmod.conquest.ConquestSystem;
 import com.lotrmod.item.ModCreativeTabs;
 import com.lotrmod.item.ModItems;
 import com.lotrmod.worldgen.LOTRWorldGen;
@@ -40,8 +41,8 @@ public class LOTRMod {
         LOTRWorldGen.register(modEventBus);
         ModFeatures.register(modEventBus);
 
-        // Register conquest system (guilds, claims, war, guards)
-        ConquestSystem.register(modEventBus, modContainer);
+        // Conquest system (guilds, claims, war, guards) disabled — not registered.
+        // ConquestSystem.register(modEventBus, modContainer);
 
         NeoForge.EVENT_BUS.register(this);
 
@@ -74,7 +75,8 @@ public class LOTRMod {
     public void onRegisterCommands(RegisterCommandsEvent event) {
         MiddleEarthCommand.register(event.getDispatcher());
         StructureCommand.register(event.getDispatcher());
-        ConquestSystem.registerCommands(event.getDispatcher());
-        LOGGER.info("Registered /middleearth, /structure, /guild, /guilddebug commands");
+        // Conquest commands (/guild, /guilddebug) disabled — not registered.
+        // ConquestSystem.registerCommands(event.getDispatcher());
+        LOGGER.info("Registered /middleearth, /structure commands");
     }
 }

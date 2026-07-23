@@ -1,7 +1,9 @@
 package com.lotrmod.item;
 
 import com.lotrmod.LOTRMod;
-import com.lotrmod.conquest.registry.ConquestItems;
+import com.lotrmod.block.ModBlocks;
+// Conquest system disabled — its items are no longer registered or shown.
+// import com.lotrmod.conquest.registry.ConquestItems;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
@@ -27,7 +29,7 @@ public class ModCreativeTabs {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> BLOCKS_TAB =
         TABS.register("blocks", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.lotrmod.blocks"))
-            .icon(() -> new ItemStack(ConquestItems.GUILD_STONE.get()))
+            .icon(() -> new ItemStack(ModBlocks.RED_SAND.get()))
             .displayItems((params, output) ->
                 forEachItem(item -> { if (item instanceof BlockItem) output.accept(item); }))
             .build());
@@ -43,7 +45,8 @@ public class ModCreativeTabs {
     /** Visits every item registered by the mod (block items and standalone items). */
     private static void forEachItem(Consumer<Item> consumer) {
         for (var holder : ModItems.ITEMS.getEntries()) consumer.accept(holder.get());
-        for (var holder : ConquestItems.ITEMS.getEntries()) consumer.accept(holder.get());
+        // Conquest system disabled — its items are not registered, so not shown.
+        // for (var holder : ConquestItems.ITEMS.getEntries()) consumer.accept(holder.get());
     }
 
     public static void register(IEventBus bus) {

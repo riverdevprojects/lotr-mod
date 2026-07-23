@@ -7,7 +7,10 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
-@EventBusSubscriber(modid = LOTRMod.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+// Conquest system disabled — annotation commented out so this client setup is
+// no longer auto-registered and won't try to bind renderers for the (now
+// unregistered) conquest entities.
+// @EventBusSubscriber(modid = LOTRMod.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ConquestClientSetup {
 
     @SubscribeEvent
