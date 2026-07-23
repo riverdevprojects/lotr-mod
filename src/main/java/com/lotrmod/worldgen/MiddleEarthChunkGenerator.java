@@ -44,7 +44,8 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
     private final PerlinSimplexNoise coastlineNoise;
 
     private static final int SEA_LEVEL = 63;
-    // Terrain is always kept above this — no water, no sub-surface voids
+    // Land/coastal terrain is kept above this so beaches stay just above the
+    // waterline; ocean seabed is allowed below sea level (see oceanFloorHeight).
     private static final int MIN_TERRAIN_HEIGHT = 65;
 
     public MiddleEarthChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
@@ -98,12 +99,22 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                     BlockState state = chunk.getBlockState(pos);
 
                     if (state.is(Blocks.STONE)) {
-                        // Snow cap on high peaks
-                        boolean isHighPeak = terrainHeight >= 160;
-                        BlockState surfaceBlock = isHighPeak
-                                ? Blocks.SNOW_BLOCK.defaultBlockState()
-                                : getSurfaceBlockForBiome(biome, terrainHeight, y);
-                        BlockState underBlock = getUnderBlockForBiome(biome, terrainHeight);
+                        BlockState surfaceBlock;
+                        BlockState underBlock;
+                        if (terrainHeight < SEA_LEVEL) {
+                            // Submerged seabed — sand in the shallows, gravel in
+                            // deeper water. Never grass, even over a land biome.
+                            boolean deep = terrainHeight < SEA_LEVEL - 8;
+                            surfaceBlock = (deep ? Blocks.GRAVEL : Blocks.SAND).defaultBlockState();
+                            underBlock = surfaceBlock;
+                        } else {
+                            // Snow cap on high peaks
+                            boolean isHighPeak = terrainHeight >= 160;
+                            surfaceBlock = isHighPeak
+                                    ? Blocks.SNOW_BLOCK.defaultBlockState()
+                                    : getSurfaceBlockForBiome(biome, terrainHeight, y);
+                            underBlock = getUnderBlockForBiome(biome, terrainHeight);
+                        }
 
                         chunk.setBlockState(pos, surfaceBlock, false);
                         pos.setY(y - 1);
@@ -225,7 +236,13 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                         chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
                     }
                 }
-                // No water filling — the world is entirely dry land.
+                // Flood ocean water above a submerged seabed up to sea level.
+                if (terrainTop < SEA_LEVEL) {
+                    for (int y = terrainTop + 1; y <= SEA_LEVEL; y++) {
+                        pos.set(startX + x, y, startZ + z);
+                        chunk.setBlockState(pos, Blocks.WATER.defaultBlockState(), false);
+                    }
+                }
             }
         }
     }
@@ -305,10 +322,9 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
                 + detail * detailScale;
 
         // ── Landmask shapes the broad Middle-earth geography ──────────────────
-        height = applyLandmask(worldX, worldZ, height);
-
-        // Clamp: terrain is never below MIN_TERRAIN_HEIGHT — no water, no voids
-        return Math.max(MIN_TERRAIN_HEIGHT, height);
+        // applyLandmask returns the final height already clamped appropriately:
+        // land/coast never dips below MIN_TERRAIN_HEIGHT, ocean sits below sea level.
+        return applyLandmask(worldX, worldZ, height);
     }
 
     /**
@@ -331,12 +347,17 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
 
     /**
      * Uses the landmask to shape Middle-earth's geography.
-     * Ocean pixels → lower terrain (dry plains/lowlands, not water).
-     * Land pixels → terrain unmodified.
-     * Coastal zones get a gentle slope.
+     * Land pixels → terrain unmodified (above sea level).
+     * Coastal zones slope down to the shoreline.
+     * Ocean pixels → submerged seabed below sea level; {@link #doFill} floods
+     * water above it up to {@link #SEA_LEVEL}, so oceans read as real ocean
+     * rather than dry grassland.
+     *
+     * The OCEAN threshold (200) matches MiddleEarthBiomeSource's ocean-biome
+     * cutoff, so the water line and the ocean biome stay in agreement.
      */
     private double applyLandmask(int worldX, int worldZ, double height) {
-        if (!LandmaskLoader.isLoaded()) return height;
+        if (!LandmaskLoader.isLoaded()) return Math.max(MIN_TERRAIN_HEIGHT, height);
 
         double noiseOffX = coastlineNoise.getValue(worldX / 80.0, worldZ / 80.0, false) * 10.0;
         double noiseOffZ = coastlineNoise.getValue((worldX + 10000) / 80.0, (worldZ + 10000) / 80.0, false) * 10.0;
@@ -347,25 +368,41 @@ public class MiddleEarthChunkGenerator extends NoiseBasedChunkGenerator {
 
         final double LAND_MAX       = 100.0;  // fully land
         final double COAST_START    = 140.0;  // start of coastal lowering
-        final double OCEAN_MIN      = 210.0;  // fully "ocean" → low dry terrain
+        final double SHORE          = 200.0;  // waterline (matches ocean biome cutoff)
 
         if (brightness <= LAND_MAX) {
             // Deep inland: landmask pushes height up slightly for prominence
             double boost = ((LAND_MAX - brightness) / LAND_MAX) * 8.0;
-            return height + boost;
+            return Math.max(MIN_TERRAIN_HEIGHT, height + boost);
         } else if (brightness < COAST_START) {
             // Near-coastal land: no change
-            return height;
-        } else if (brightness < OCEAN_MIN) {
-            // Coastal transition: gradually lower toward lowland plains
-            double t = (brightness - COAST_START) / (OCEAN_MIN - COAST_START);
-            t = smoothstep(t);
-            double lowlandTarget = SEA_LEVEL + 8.0; // low but still dry
-            return height * (1.0 - t) + lowlandTarget * t;
+            return Math.max(MIN_TERRAIN_HEIGHT, height);
+        } else if (brightness < SHORE) {
+            // Coastal transition: slope down toward the shoreline (a beach just
+            // above the waterline)
+            double t = smoothstep((brightness - COAST_START) / (SHORE - COAST_START));
+            double shoreTarget = SEA_LEVEL + 2.0; // just above the water at the beach
+            double blended = height * (1.0 - t) + shoreTarget * t;
+            return Math.max(MIN_TERRAIN_HEIGHT, blended);
         } else {
-            // Ocean pixel → lowland plains, still fully dry
-            return SEA_LEVEL + 5.0;
+            // Ocean pixel → submerged seabed (water floods above this in doFill)
+            return oceanFloorHeight(worldX, worldZ, brightness);
         }
+    }
+
+    /**
+     * Height of the ocean floor for an ocean pixel. Slopes from a shallow shelf
+     * just below the surface near the coast down to deeper water offshore, with
+     * gentle seabed variation. Always below {@link #SEA_LEVEL} so water fills above.
+     */
+    private double oceanFloorHeight(int worldX, int worldZ, double brightness) {
+        double depthT = smoothstep(Math.min(1.0, (brightness - 200.0) / (255.0 - 200.0)));
+        double shelf = SEA_LEVEL - 2.0;   // shallow water at the coast
+        double deep  = SEA_LEVEL - 22.0;  // deeper water offshore
+        double floor = shelf + (deep - shelf) * depthT;
+        double bump  = coastlineNoise.getValue(worldX / 55.0, worldZ / 55.0, false) * 3.0;
+        // Keep the seabed strictly below the waterline so ocean never dries out
+        return Math.min(SEA_LEVEL - 1.0, floor + bump);
     }
 
     // ======================================================================
