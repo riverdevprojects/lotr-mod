@@ -3,7 +3,7 @@
   "config": {
     "to_place": {
       "type": "minecraft:simple_state_provider",
-      "state": { "Name": "lotrmod:tumbleweed" }
+      "state": { "Name": "minecraft:dead_bush" }
     }
   }
 }

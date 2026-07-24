@@ -1,6 +1,5 @@
 package com.lotrmod;
 
-import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.command.StructureCommand;
 // Conquest system disabled — kept in the codebase but not registered into the game.
@@ -10,7 +9,6 @@ import com.lotrmod.item.ModItems;
 import com.lotrmod.worldgen.LOTRWorldGen;
 import com.lotrmod.worldgen.LandmaskLoader;
 import com.lotrmod.worldgen.RegionMapLoader;
-import com.lotrmod.worldgen.feature.ModFeatures;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.neoforged.bus.api.IEventBus;
@@ -32,14 +30,12 @@ public class LOTRMod {
     public LOTRMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
 
-        // Register blocks and items
-        ModBlocks.register(modEventBus);
+        // Register items (empty for now) and the creative tab
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
 
         // Register world generation components
         LOTRWorldGen.register(modEventBus);
-        ModFeatures.register(modEventBus);
 
         // Conquest system (guilds, claims, war, guards) disabled — not registered.
         // ConquestSystem.register(modEventBus, modContainer);

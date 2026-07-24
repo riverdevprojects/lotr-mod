@@ -1,22 +1,23 @@
 package com.lotrmod.structure;
 
-import com.lotrmod.block.ModBlocks;
-import com.lotrmod.block.RoundDoorBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoorHingeSide;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 
 /**
  * Procedural generator for a richly-detailed hobbit-hole (smial): a grassy mound with a
- * timber-framed wooden facade, a working round {@link RoundDoorBlock}, mullioned round windows
+ * timber-framed wooden facade, a working vanilla oak door in a plank frame, mullioned round windows
  * with shutters and flower boxes, a porch, two smoking chimneys, a fully-furnished interior
  * (dining nook, kitchen, study, bedroom, pantry) and a fenced garden with a vegetable plot,
  * flower beds, lamp posts, a well and an apple tree.
@@ -210,11 +211,18 @@ public final class HobbitHoleBuilder {
         for (int col = 0; col < 3; col++)
             for (int row = 0; row < 3; row++) {
                 BlockPos p = anchor.relative(right, col - 1).above(row);
-                BlockState s = ModBlocks.HOBBIT_DOOR.get().defaultBlockState()
-                        .setValue(RoundDoorBlock.FACING, facing)
-                        .setValue(RoundDoorBlock.OPEN, false)
-                        .setValue(RoundDoorBlock.COL, col)
-                        .setValue(RoundDoorBlock.ROW, row);
+                BlockState s;
+                if (col == 1 && row <= 1) {
+                    // Placeholder: a vanilla oak door fills the centre column (lower + upper halves)
+                    s = Blocks.OAK_DOOR.defaultBlockState()
+                            .setValue(DoorBlock.FACING, facing)
+                            .setValue(DoorBlock.HALF, row == 0 ? DoubleBlockHalf.LOWER : DoubleBlockHalf.UPPER)
+                            .setValue(DoorBlock.OPEN, false)
+                            .setValue(DoorBlock.HINGE, DoorHingeSide.LEFT);
+                } else {
+                    // plank frame around the doorway
+                    s = Blocks.OAK_PLANKS.defaultBlockState();
+                }
                 if (c.level.setBlock(p, s, 3)) placed++;
             }
         return placed;
