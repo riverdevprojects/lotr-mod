@@ -4,8 +4,12 @@ import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.command.StructureCommand;
 // Conquest system disabled — kept in the codebase but not registered into the game.
 // import com.lotrmod.conquest.ConquestSystem;
+import com.lotrmod.block.ModBlocks;
+import com.lotrmod.event.ScrubHandlers;
+import com.lotrmod.item.ModArmorMaterials;
 import com.lotrmod.item.ModCreativeTabs;
 import com.lotrmod.item.ModItems;
+import com.lotrmod.loot.ModLootModifiers;
 import com.lotrmod.worldgen.LOTRWorldGen;
 import com.lotrmod.worldgen.LandmaskLoader;
 import com.lotrmod.worldgen.RegionMapLoader;
@@ -30,9 +34,17 @@ public class LOTRMod {
     public LOTRMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
 
-        // Register items (empty for now) and the creative tab
+        // Register blocks first so their BlockItems are added to ModItems.ITEMS, then items,
+        // armor materials, and the creative tab (which is populated from the item registry).
+        ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
+        ModArmorMaterials.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
+
+        // Diamond/netherite scrub (§2): creative-tab removal runs on the mod bus.
+        modEventBus.addListener(ScrubHandlers::onBuildCreativeTab);
+        // Global loot modifier serializer for the loot-table scrub.
+        ModLootModifiers.register(modEventBus);
 
         // Register world generation components
         LOTRWorldGen.register(modEventBus);
@@ -41,6 +53,8 @@ public class LOTRMod {
         // ConquestSystem.register(modEventBus, modContainer);
 
         NeoForge.EVENT_BUS.register(this);
+        // Diamond/netherite scrub (§2): villager-trade removal runs on the game bus.
+        NeoForge.EVENT_BUS.addListener(ScrubHandlers::onVillagerTrades);
 
         LOGGER.info("Lord of the Rings Mod initializing...");
     }

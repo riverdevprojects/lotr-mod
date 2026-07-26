@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MMM",
+    "M M"
+  ],
+  "key": {
+    "M": "minecraft:copper_ingot"
+  },
+  "result": {
+    "id": "lotrmod:copper_helmet",
+    "count": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "lotrmod:raw_tin_block"
+  ],
+  "result": {
+    "id": "lotrmod:raw_tin",
+    "count": 9
+  }
+}

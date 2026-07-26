@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MMM",
+    "MMM",
+    "MMM"
+  ],
+  "key": {
+    "M": "lotrmod:raw_tin"
+  },
+  "result": {
+    "id": "lotrmod:raw_tin_block",
+    "count": 1
+  }
+}
