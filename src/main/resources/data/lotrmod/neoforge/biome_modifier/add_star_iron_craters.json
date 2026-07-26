@@ -1,0 +1,8 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#lotrmod:has_lotr_ores",
+  "features": [
+    "lotrmod:star_iron_crater"
+  ],
+  "step": "top_layer_modification"
+}
