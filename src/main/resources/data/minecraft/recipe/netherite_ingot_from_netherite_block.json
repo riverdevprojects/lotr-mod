@@ -1,0 +1,15 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:stick"
+  ],
+  "result": {
+    "id": "minecraft:stick",
+    "count": 1
+  }
+}

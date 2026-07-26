@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MMM",
+    "M M",
+    "M M"
+  ],
+  "key": {
+    "M": "lotrmod:star_iron_ingot"
+  },
+  "result": {
+    "id": "lotrmod:star_iron_leggings",
+    "count": 1
+  }
+}

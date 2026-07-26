@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:blasting",
+  "ingredient": "lotrmod:star_iron_chunk",
+  "result": {
+    "id": "lotrmod:star_iron_ingot"
+  },
+  "experience": 1.0,
+  "cookingtime": 100
+}
