@@ -1,6 +1,6 @@
 {
   "replace": false,
   "entries": [
-    "lotrmod:replace_scrubbed_gear"
+    "lotrmod:drop_scrubbed_gear"
   ]
 }

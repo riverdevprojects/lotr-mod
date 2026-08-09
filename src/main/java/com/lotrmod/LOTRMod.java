@@ -2,11 +2,7 @@ package com.lotrmod;
 
 import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.command.StructureCommand;
-// Conquest system disabled — kept in the codebase but not registered into the game.
-// import com.lotrmod.conquest.ConquestSystem;
-import com.lotrmod.block.ModBlocks;
 import com.lotrmod.event.ScrubHandlers;
-import com.lotrmod.item.ModArmorMaterials;
 import com.lotrmod.item.ModCreativeTabs;
 import com.lotrmod.item.ModItems;
 import com.lotrmod.loot.ModLootModifiers;
@@ -34,11 +30,7 @@ public class LOTRMod {
     public LOTRMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
 
-        // Register blocks first so their BlockItems are added to ModItems.ITEMS, then items,
-        // armor materials, and the creative tab (which is populated from the item registry).
-        ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
-        ModArmorMaterials.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
 
         // Diamond/netherite scrub (§2): creative-tab removal runs on the mod bus.
@@ -48,9 +40,6 @@ public class LOTRMod {
 
         // Register world generation components
         LOTRWorldGen.register(modEventBus);
-
-        // Conquest system (guilds, claims, war, guards) disabled — not registered.
-        // ConquestSystem.register(modEventBus, modContainer);
 
         NeoForge.EVENT_BUS.register(this);
         // Diamond/netherite scrub (§2): villager-trade removal runs on the game bus.
@@ -85,8 +74,6 @@ public class LOTRMod {
     public void onRegisterCommands(RegisterCommandsEvent event) {
         MiddleEarthCommand.register(event.getDispatcher());
         StructureCommand.register(event.getDispatcher());
-        // Conquest commands (/guild, /guilddebug) disabled — not registered.
-        // ConquestSystem.registerCommands(event.getDispatcher());
         LOGGER.info("Registered /middleearth, /structure commands");
     }
 }

@@ -1,9 +1,0 @@
-{
-  "type": "minecraft:smelting",
-  "ingredient": "lotrmod:silver_ore",
-  "result": {
-    "id": "lotrmod:silver_ingot"
-  },
-  "experience": 0.7,
-  "cookingtime": 200
-}

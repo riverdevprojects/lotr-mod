@@ -16,8 +16,8 @@ public final class ModLootModifiers {
     public static final DeferredRegister<MapCodec<? extends IGlobalLootModifier>> SERIALIZERS =
         DeferredRegister.create(NeoForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, LOTRMod.MODID);
 
-    public static final Supplier<MapCodec<ReplaceScrubbedGearModifier>> REPLACE_SCRUBBED_GEAR =
-        SERIALIZERS.register("replace_scrubbed_gear", () -> ReplaceScrubbedGearModifier.CODEC);
+    public static final Supplier<MapCodec<DropScrubbedGearModifier>> DROP_SCRUBBED_GEAR =
+        SERIALIZERS.register("drop_scrubbed_gear", () -> DropScrubbedGearModifier.CODEC);
 
     public static void register(IEventBus eventBus) {
         SERIALIZERS.register(eventBus);

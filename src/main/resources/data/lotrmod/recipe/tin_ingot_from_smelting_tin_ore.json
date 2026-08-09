@@ -1,9 +1,0 @@
-{
-  "type": "minecraft:smelting",
-  "ingredient": "lotrmod:tin_ore",
-  "result": {
-    "id": "lotrmod:tin_ingot"
-  },
-  "experience": 0.5,
-  "cookingtime": 200
-}

@@ -1,8 +1,6 @@
 package com.lotrmod.worldgen;
 
 import com.lotrmod.LOTRMod;
-import com.lotrmod.worldgen.feature.ModFeatures;
-import com.lotrmod.worldgen.placement.ModPlacementModifiers;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.biome.BiomeSource;
@@ -34,11 +32,6 @@ public class LOTRWorldGen {
         // Register chunk generators and biome sources
         CHUNK_GENERATORS.register(modEventBus);
         BIOME_SOURCES.register(modEventBus);
-
-        // Ore worldgen (Materials GDD §5): the star-iron crater feature and the region gate its
-        // placed features rely on.
-        ModFeatures.register(modEventBus);
-        ModPlacementModifiers.register(modEventBus);
 
         LOTRMod.LOGGER.info("Registered LOTR world generation components");
     }

@@ -1,9 +1,0 @@
-{
-  "type": "minecraft:blasting",
-  "ingredient": "lotrmod:raw_silver",
-  "result": {
-    "id": "lotrmod:silver_ingot"
-  },
-  "experience": 0.7,
-  "cookingtime": 100
-}
