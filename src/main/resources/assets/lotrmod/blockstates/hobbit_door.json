@@ -1,0 +1,274 @@
+{
+  "variants": {
+    "col=0,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_left"
+    },
+    "col=0,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_left"
+    },
+    "col=0,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=0,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_left"
+    },
+    "col=0,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom"
+    },
+    "col=1,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_base"
+    },
+    "col=1,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=1,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top"
+    },
+    "col=1,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty"
+    },
+    "col=2,facing=north,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_right"
+    },
+    "col=2,facing=north,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=2,facing=north,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_right"
+    },
+    "col=2,facing=north,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=2,facing=north,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_right"
+    },
+    "col=2,facing=north,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open"
+    },
+    "col=0,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_left",
+      "y": 90
+    },
+    "col=0,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=0,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_left",
+      "y": 90
+    },
+    "col=0,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=0,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_left",
+      "y": 90
+    },
+    "col=0,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom",
+      "y": 90
+    },
+    "col=1,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_base",
+      "y": 90
+    },
+    "col=1,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=1,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top",
+      "y": 90
+    },
+    "col=1,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_right",
+      "y": 90
+    },
+    "col=2,facing=east,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_right",
+      "y": 90
+    },
+    "col=2,facing=east,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=2,facing=east,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_right",
+      "y": 90
+    },
+    "col=2,facing=east,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 90
+    },
+    "col=0,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_left",
+      "y": 180
+    },
+    "col=0,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=0,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_left",
+      "y": 180
+    },
+    "col=0,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=0,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_left",
+      "y": 180
+    },
+    "col=0,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom",
+      "y": 180
+    },
+    "col=1,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_base",
+      "y": 180
+    },
+    "col=1,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=1,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top",
+      "y": 180
+    },
+    "col=1,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_right",
+      "y": 180
+    },
+    "col=2,facing=south,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_right",
+      "y": 180
+    },
+    "col=2,facing=south,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=2,facing=south,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_right",
+      "y": 180
+    },
+    "col=2,facing=south,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 180
+    },
+    "col=0,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_left",
+      "y": 270
+    },
+    "col=0,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=0,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_left",
+      "y": 270
+    },
+    "col=0,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=0,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_left",
+      "y": 270
+    },
+    "col=0,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom",
+      "y": 270
+    },
+    "col=1,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_base",
+      "y": 270
+    },
+    "col=1,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=1,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top",
+      "y": 270
+    },
+    "col=1,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_empty",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=0": {
+      "model": "lotrmod:block/gate_hobbit_blue_bottom_right",
+      "y": 270
+    },
+    "col=2,facing=west,open=true,row=0": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=1": {
+      "model": "lotrmod:block/gate_hobbit_blue_right",
+      "y": 270
+    },
+    "col=2,facing=west,open=true,row=1": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    },
+    "col=2,facing=west,open=false,row=2": {
+      "model": "lotrmod:block/gate_hobbit_blue_top_right",
+      "y": 270
+    },
+    "col=2,facing=west,open=true,row=2": {
+      "model": "lotrmod:block/hobbit_door_open",
+      "y": 270
+    }
+  }
+}

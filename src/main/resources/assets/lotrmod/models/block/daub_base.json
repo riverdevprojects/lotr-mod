@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "lotrmod:block/daub_base",
+    "north": "lotrmod:block/daub_base",
+    "south": "lotrmod:block/daub_base",
+    "east": "lotrmod:block/daub_base",
+    "west": "lotrmod:block/daub_base",
+    "up": "lotrmod:block/daub_base",
+    "down": "lotrmod:block/daub_base"
+  }
+}

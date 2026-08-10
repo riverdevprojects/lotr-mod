@@ -1,5 +1,6 @@
 package com.lotrmod;
 
+import com.lotrmod.block.ModBlocks;
 import com.lotrmod.command.MiddleEarthCommand;
 import com.lotrmod.command.StructureCommand;
 import com.lotrmod.event.ScrubHandlers;
@@ -30,6 +31,7 @@ public class LOTRMod {
     public LOTRMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
 
+        ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
 

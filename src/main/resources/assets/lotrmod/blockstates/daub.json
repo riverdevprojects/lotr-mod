@@ -1,0 +1,199 @@
+{
+  "variants": {
+    "facing=north,variant=base": {
+      "model": "lotrmod:block/daub_base"
+    },
+    "facing=north,variant=top": {
+      "model": "lotrmod:block/daub_top"
+    },
+    "facing=north,variant=bottom": {
+      "model": "lotrmod:block/daub_bottom"
+    },
+    "facing=north,variant=left": {
+      "model": "lotrmod:block/daub_left"
+    },
+    "facing=north,variant=right": {
+      "model": "lotrmod:block/daub_right"
+    },
+    "facing=north,variant=top_left": {
+      "model": "lotrmod:block/daub_top_left"
+    },
+    "facing=north,variant=top_right": {
+      "model": "lotrmod:block/daub_top_right"
+    },
+    "facing=north,variant=bottom_left": {
+      "model": "lotrmod:block/daub_bottom_left"
+    },
+    "facing=north,variant=bottom_right": {
+      "model": "lotrmod:block/daub_bottom_right"
+    },
+    "facing=north,variant=top_left_inv": {
+      "model": "lotrmod:block/daub_top_left_inv"
+    },
+    "facing=north,variant=top_right_inv": {
+      "model": "lotrmod:block/daub_top_right_inv"
+    },
+    "facing=north,variant=bottom_left_inv": {
+      "model": "lotrmod:block/daub_bottom_left_inv"
+    },
+    "facing=north,variant=bottom_right_inv": {
+      "model": "lotrmod:block/daub_bottom_right_inv"
+    },
+    "facing=east,variant=base": {
+      "model": "lotrmod:block/daub_base",
+      "y": 90
+    },
+    "facing=east,variant=top": {
+      "model": "lotrmod:block/daub_top",
+      "y": 90
+    },
+    "facing=east,variant=bottom": {
+      "model": "lotrmod:block/daub_bottom",
+      "y": 90
+    },
+    "facing=east,variant=left": {
+      "model": "lotrmod:block/daub_left",
+      "y": 90
+    },
+    "facing=east,variant=right": {
+      "model": "lotrmod:block/daub_right",
+      "y": 90
+    },
+    "facing=east,variant=top_left": {
+      "model": "lotrmod:block/daub_top_left",
+      "y": 90
+    },
+    "facing=east,variant=top_right": {
+      "model": "lotrmod:block/daub_top_right",
+      "y": 90
+    },
+    "facing=east,variant=bottom_left": {
+      "model": "lotrmod:block/daub_bottom_left",
+      "y": 90
+    },
+    "facing=east,variant=bottom_right": {
+      "model": "lotrmod:block/daub_bottom_right",
+      "y": 90
+    },
+    "facing=east,variant=top_left_inv": {
+      "model": "lotrmod:block/daub_top_left_inv",
+      "y": 90
+    },
+    "facing=east,variant=top_right_inv": {
+      "model": "lotrmod:block/daub_top_right_inv",
+      "y": 90
+    },
+    "facing=east,variant=bottom_left_inv": {
+      "model": "lotrmod:block/daub_bottom_left_inv",
+      "y": 90
+    },
+    "facing=east,variant=bottom_right_inv": {
+      "model": "lotrmod:block/daub_bottom_right_inv",
+      "y": 90
+    },
+    "facing=south,variant=base": {
+      "model": "lotrmod:block/daub_base",
+      "y": 180
+    },
+    "facing=south,variant=top": {
+      "model": "lotrmod:block/daub_top",
+      "y": 180
+    },
+    "facing=south,variant=bottom": {
+      "model": "lotrmod:block/daub_bottom",
+      "y": 180
+    },
+    "facing=south,variant=left": {
+      "model": "lotrmod:block/daub_left",
+      "y": 180
+    },
+    "facing=south,variant=right": {
+      "model": "lotrmod:block/daub_right",
+      "y": 180
+    },
+    "facing=south,variant=top_left": {
+      "model": "lotrmod:block/daub_top_left",
+      "y": 180
+    },
+    "facing=south,variant=top_right": {
+      "model": "lotrmod:block/daub_top_right",
+      "y": 180
+    },
+    "facing=south,variant=bottom_left": {
+      "model": "lotrmod:block/daub_bottom_left",
+      "y": 180
+    },
+    "facing=south,variant=bottom_right": {
+      "model": "lotrmod:block/daub_bottom_right",
+      "y": 180
+    },
+    "facing=south,variant=top_left_inv": {
+      "model": "lotrmod:block/daub_top_left_inv",
+      "y": 180
+    },
+    "facing=south,variant=top_right_inv": {
+      "model": "lotrmod:block/daub_top_right_inv",
+      "y": 180
+    },
+    "facing=south,variant=bottom_left_inv": {
+      "model": "lotrmod:block/daub_bottom_left_inv",
+      "y": 180
+    },
+    "facing=south,variant=bottom_right_inv": {
+      "model": "lotrmod:block/daub_bottom_right_inv",
+      "y": 180
+    },
+    "facing=west,variant=base": {
+      "model": "lotrmod:block/daub_base",
+      "y": 270
+    },
+    "facing=west,variant=top": {
+      "model": "lotrmod:block/daub_top",
+      "y": 270
+    },
+    "facing=west,variant=bottom": {
+      "model": "lotrmod:block/daub_bottom",
+      "y": 270
+    },
+    "facing=west,variant=left": {
+      "model": "lotrmod:block/daub_left",
+      "y": 270
+    },
+    "facing=west,variant=right": {
+      "model": "lotrmod:block/daub_right",
+      "y": 270
+    },
+    "facing=west,variant=top_left": {
+      "model": "lotrmod:block/daub_top_left",
+      "y": 270
+    },
+    "facing=west,variant=top_right": {
+      "model": "lotrmod:block/daub_top_right",
+      "y": 270
+    },
+    "facing=west,variant=bottom_left": {
+      "model": "lotrmod:block/daub_bottom_left",
+      "y": 270
+    },
+    "facing=west,variant=bottom_right": {
+      "model": "lotrmod:block/daub_bottom_right",
+      "y": 270
+    },
+    "facing=west,variant=top_left_inv": {
+      "model": "lotrmod:block/daub_top_left_inv",
+      "y": 270
+    },
+    "facing=west,variant=top_right_inv": {
+      "model": "lotrmod:block/daub_top_right_inv",
+      "y": 270
+    },
+    "facing=west,variant=bottom_left_inv": {
+      "model": "lotrmod:block/daub_bottom_left_inv",
+      "y": 270
+    },
+    "facing=west,variant=bottom_right_inv": {
+      "model": "lotrmod:block/daub_bottom_right_inv",
+      "y": 270
+    }
+  }
+}

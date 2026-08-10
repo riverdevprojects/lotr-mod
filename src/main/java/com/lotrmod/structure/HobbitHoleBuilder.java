@@ -1,16 +1,17 @@
 package com.lotrmod.structure;
 
+import com.lotrmod.block.ConnectedPanelBlock;
+import com.lotrmod.block.HobbitDoorBlock;
+import com.lotrmod.block.ModBlocks;
+import com.lotrmod.block.WallVariant;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DoorHingeSide;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
@@ -47,6 +48,7 @@ public final class HobbitHoleBuilder {
         placed += furnishInterior(c, facing);
         placed += buildChimneys(c);
         placed += buildGarden(c, facing);
+        placed += fixConnections(c);
         return placed;
     }
 
@@ -137,7 +139,7 @@ public final class HobbitHoleBuilder {
         Direction.Axis ax = c.right.getAxis();
         for (int bk = 2; bk <= ROOM_DEPTH - 1; bk += 2)
             for (int rt = -ROOM_HALF_W + 1; rt <= ROOM_HALF_W - 1; rt++)
-                if (inRoom(rt, ROOM_HEIGHT - 1, bk) && c.set(rt, ROOM_HEIGHT - 1, bk, pillar(Blocks.STRIPPED_DARK_OAK_LOG, ax)))
+                if (inRoom(rt, ROOM_HEIGHT - 1, bk) && c.set(rt, ROOM_HEIGHT - 1, bk, pillar(ModBlocks.WOOD_BEAM_OAK.get(), ax)))
                     placed++;
         return placed;
     }
@@ -156,16 +158,16 @@ public final class HobbitHoleBuilder {
                 if (up <= 0) {
                     s = Blocks.COBBLESTONE.defaultBlockState();               // stone sill course
                 } else if (d > FACADE_R - 1.0) {
-                    s = pillar(Blocks.DARK_OAK_LOG, Direction.Axis.Y);         // outer timber ring
+                    s = pillar(ModBlocks.WOOD_BEAM_OAK.get(), Direction.Axis.Y); // outer timber ring
                 } else if (Math.floorMod(rt, 3) == 0) {
-                    s = pillar(Blocks.STRIPPED_DARK_OAK_LOG, Direction.Axis.Y);// vertical posts
+                    s = pillar(ModBlocks.WOOD_BEAM_OAK.get(), Direction.Axis.Y); // vertical posts
                 } else if (Math.floorMod(up, 3) == 0) {
-                    s = pillar(Blocks.STRIPPED_DARK_OAK_LOG, beamAx);          // horizontal beams
+                    s = pillar(ModBlocks.WOOD_BEAM_OAK.get(), beamAx);          // horizontal beams
                 } else {
                     int h = c.hash(rt, up, 0) % 100;
                     s = h < 55 ? Blocks.OAK_PLANKS.defaultBlockState()
                             : h < 80 ? Blocks.SPRUCE_PLANKS.defaultBlockState()
-                                     : Blocks.WHITE_TERRACOTTA.defaultBlockState();
+                                     : daub(c.facing);                         // wattle-and-daub infill
                 }
                 if (c.set(rt, up, 0, s)) placed++;
                 if (c.set(rt, up, 1, plasterReveal(c, rt, up))) placed++;
@@ -186,8 +188,8 @@ public final class HobbitHoleBuilder {
 
     private static int doorFrame(Ctx c) {
         int placed = 0;
-        BlockState log = pillar(Blocks.STRIPPED_DARK_OAK_LOG, Direction.Axis.Y);
-        BlockState beam = pillar(Blocks.STRIPPED_DARK_OAK_LOG, c.right.getAxis());
+        BlockState log = pillar(ModBlocks.WOOD_BEAM_OAK.get(), Direction.Axis.Y);
+        BlockState beam = pillar(ModBlocks.WOOD_BEAM_OAK.get(), c.right.getAxis());
         for (int up = 0; up <= 2; up++) { // jambs
             if (c.set(-2, up, 0, log)) placed++;
             if (c.set(2, up, 0, log)) placed++;
@@ -206,24 +208,14 @@ public final class HobbitHoleBuilder {
 
     private static int placeDoor(Ctx c, Direction facing) {
         int placed = 0;
-        BlockPos anchor = c.pos(0, 0, 0);
-        Direction right = facing.getClockWise();
-        for (int col = 0; col < 3; col++)
-            for (int row = 0; row < 3; row++) {
-                BlockPos p = anchor.relative(right, col - 1).above(row);
-                BlockState s;
-                if (col == 1 && row <= 1) {
-                    // Placeholder: a vanilla oak door fills the centre column (lower + upper halves)
-                    s = Blocks.OAK_DOOR.defaultBlockState()
-                            .setValue(DoorBlock.FACING, facing)
-                            .setValue(DoorBlock.HALF, row == 0 ? DoubleBlockHalf.LOWER : DoubleBlockHalf.UPPER)
-                            .setValue(DoorBlock.OPEN, false)
-                            .setValue(DoorBlock.HINGE, DoorHingeSide.LEFT);
-                } else {
-                    // plank frame around the doorway
-                    s = Blocks.OAK_PLANKS.defaultBlockState();
-                }
-                if (c.level.setBlock(p, s, 3)) placed++;
+        for (int rt = -1; rt <= 1; rt++)
+            for (int up = 0; up <= 2; up++) {
+                BlockState s = ModBlocks.HOBBIT_DOOR.get().defaultBlockState()
+                        .setValue(HobbitDoorBlock.FACING, facing)
+                        .setValue(HobbitDoorBlock.OPEN, false)
+                        .setValue(HobbitDoorBlock.COL, rt + 1)
+                        .setValue(HobbitDoorBlock.ROW, up);
+                if (c.level.setBlock(c.pos(rt, up, 0), s, 3)) placed++;
             }
         return placed;
     }
@@ -583,6 +575,39 @@ public final class HobbitHoleBuilder {
 
     private static BlockState pillar(Block b, Direction.Axis ax) {
         return b.defaultBlockState().setValue(RotatedPillarBlock.AXIS, ax);
+    }
+
+    private static BlockState daub(Direction facing) {
+        return panel(ModBlocks.DAUB.get(), facing);
+    }
+
+    private static BlockState panel(ConnectedPanelBlock block, Direction facing) {
+        return block.defaultBlockState()
+                .setValue(ConnectedPanelBlock.FACING, facing)
+                .setValue(ConnectedPanelBlock.VARIANT, WallVariant.BASE);
+    }
+
+    /**
+     * {@link Ctx#set} places blocks with no neighbor-shape updates, so a {@link ConnectedPanelBlock}
+     * placed before its neighbor never learns about it. Re-walk every daub cell placed by the
+     * facade and recompute its connected-texture variant against final neighbors.
+     */
+    private static int fixConnections(Ctx c) {
+        int fixed = 0;
+        for (int rt = -FACADE_R; rt <= FACADE_R; rt++)
+            for (int up = -1; up <= FACADE_R + 3; up++)
+                fixed += fixConnection(c, rt, up, 0);
+        return fixed;
+    }
+
+    private static int fixConnection(Ctx c, int rt, int up, int bk) {
+        BlockPos pos = c.pos(rt, up, bk);
+        BlockState state = c.level.getBlockState(pos);
+        if (!(state.getBlock() instanceof ConnectedPanelBlock panel)) return 0;
+        WallVariant variant = ConnectedPanelBlock.computeVariant(c.level, pos, state.getValue(ConnectedPanelBlock.FACING), panel);
+        if (state.getValue(ConnectedPanelBlock.VARIANT) == variant) return 0;
+        c.level.setBlock(pos, state.setValue(ConnectedPanelBlock.VARIANT, variant), 2);
+        return 1;
     }
 
     private static BlockState stair(Block b, Direction facing, Half half) {

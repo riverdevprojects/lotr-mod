@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "lotrmod:block/gate_hobbit_blue_base",
+    "north": "lotrmod:block/gate_hobbit_blue_base",
+    "south": "lotrmod:block/gate_hobbit_blue_base",
+    "east": "lotrmod:block/gate_hobbit_blue_base",
+    "west": "lotrmod:block/gate_hobbit_blue_base",
+    "up": "lotrmod:block/gate_hobbit_blue_base",
+    "down": "lotrmod:block/gate_hobbit_blue_base"
+  }
+}

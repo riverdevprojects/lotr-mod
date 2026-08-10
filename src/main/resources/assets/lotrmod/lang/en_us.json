@@ -1,4 +1,9 @@
 {
   "dimension.lotrmod.middleearth": "Middle-earth",
-  "itemGroup.lotrmod.lotr": "Lord of the Rings"
+  "itemGroup.lotrmod.lotr": "Lord of the Rings",
+  "block.lotrmod.daub": "Daub Wall",
+  "block.lotrmod.hobbit_door": "Hobbit Door",
+  "block.lotrmod.wood_beam_oak": "Oak Wood Beam",
+  "block.lotrmod.wood_beam_spruce": "Spruce Wood Beam",
+  "block.lotrmod.wood_beam_acacia": "Acacia Wood Beam"
 }

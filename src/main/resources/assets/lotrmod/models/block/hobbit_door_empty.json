@@ -1,0 +1,6 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "lotrmod:block/gate_hobbit_blue_base"
+  }
+}
